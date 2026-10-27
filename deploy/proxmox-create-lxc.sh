@@ -15,6 +15,8 @@
 #   IP          dhcp oder z. B. 192.168.1.50/24 (Standard: dhcp)
 #   GW          Gateway bei fester IP
 #   VLAN        VLAN-Tag (optional)
+#   DEBIAN      Debian-Version der Vorlage  (Standard: 12 – läuft auf allen
+#               Proxmox-Versionen; 13 braucht ein aktuelles Proxmox)
 #   DISK        Größe Root-FS in GB         (Standard: 4)
 #   MEMORY      RAM in MB                   (Standard: 512)
 set -euo pipefail
@@ -27,6 +29,7 @@ BRIDGE="${BRIDGE:-vmbr0}"
 IP="${IP:-dhcp}"
 DISK="${DISK:-4}"
 MEMORY="${MEMORY:-512}"
+DEBIAN="${DEBIAN:-12}"
 INSTALL_URL="${INSTALL_URL:-https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/deploy/install.sh}"
 
 command -v pct >/dev/null || { echo "Dieses Skript läuft auf dem Proxmox-Host (pct nicht gefunden)." >&2; exit 1; }
@@ -36,10 +39,11 @@ if pct status "$CTID" >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "==> Debian-Vorlage suchen"
+echo "==> Debian-$DEBIAN-Vorlage suchen"
 pveam update >/dev/null
-TEMPLATE=$(pveam available --section system | awk '{print $2}' | grep -E '^debian-1[2-9]-standard_.*amd64' | sort -V | tail -1)
-[ -n "$TEMPLATE" ] || { echo "Keine Debian-Vorlage gefunden." >&2; exit 1; }
+TEMPLATE=$(pveam available --section system | awk '{print $2}' | grep -E "^debian-${DEBIAN}-standard_.*amd64" | sort -V | tail -1)
+[ -n "$TEMPLATE" ] || { echo "Keine Vorlage für Debian $DEBIAN gefunden (pveam available --section system)." >&2; exit 1; }
+echo "    $TEMPLATE"
 if ! pveam list "$TEMPLATE_STORAGE" | grep -q "$TEMPLATE"; then
   echo "==> Lade $TEMPLATE"
   pveam download "$TEMPLATE_STORAGE" "$TEMPLATE" >/dev/null
@@ -50,14 +54,21 @@ NET="name=eth0,bridge=$BRIDGE,ip=$IP"
 [ -n "${VLAN:-}" ] && NET="$NET,tag=$VLAN"
 
 echo "==> Container $CTID ($CT_HOSTNAME) anlegen"
-pct create "$CTID" "$TEMPLATE_STORAGE:vztmpl/$TEMPLATE" \
+# Ältere Proxmox-Versionen kennen neue Debian-Versionen noch nicht
+# („unsupported debian version“) – dann mit DEBIAN=12 oder Proxmox aktualisieren.
+if ! pct create "$CTID" "$TEMPLATE_STORAGE:vztmpl/$TEMPLATE" \
   --hostname "$CT_HOSTNAME" \
   --cores 1 --memory "$MEMORY" --swap 256 \
   --rootfs "$STORAGE:$DISK" \
   --net0 "$NET" \
   --unprivileged 1 --features nesting=1 \
   --onboot 1 \
-  --description "BTS Liveticker – https://github.com/frankjuchim/bts-liveticker-v2" >/dev/null
+  --description "BTS Liveticker – https://github.com/frankjuchim/bts-liveticker-v2" >/dev/null; then
+  echo "!! Container konnte nicht angelegt werden." >&2
+  echo "   Bei „unsupported debian version“: Proxmox aktualisieren (apt update && apt full-upgrade)" >&2
+  echo "   oder eine ältere Debian-Version wählen, z. B. DEBIAN=12." >&2
+  exit 1
+fi
 pct start "$CTID"
 
 echo "==> Warte auf Netzwerk"

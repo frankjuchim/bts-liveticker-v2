@@ -28,7 +28,7 @@ Auf dem **Proxmox-Host** als root (Shell im Web-UI: *Datacenter → Knoten → S
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/deploy/proxmox-create-lxc.sh)"
 ```
 
-Das Skript lädt eine Debian-Vorlage, legt einen unprivilegierten LXC-Container an
+Voraussetzung: Proxmox VE 8 oder neuer (7.4 mit allen Updates sollte auch gehen). Das Skript lädt eine Debian-12-Vorlage, legt einen unprivilegierten LXC-Container an
 (1 Kern, 512 MB RAM, 4 GB Platte, DHCP, startet mit dem Host) und installiert den Liveticker.
 Am Ende stehen Adresse und Ticker-Passwort im Terminal.
 
@@ -48,9 +48,10 @@ CTID=120 IP=192.168.1.50/24 GW=192.168.1.1 STORAGE=local-zfs \
 | `BRIDGE` | `vmbr0` | Netzwerkbrücke |
 | `IP` / `GW` | `dhcp` | z. B. `192.168.1.50/24` und Gateway |
 | `VLAN` | – | VLAN-Tag |
+| `DEBIAN` | `12` | Debian-Version des Containers (`13` nur mit aktuellem Proxmox) |
 | `DISK` / `MEMORY` | `4` / `512` | GB / MB |
 
-**Schon einen Container?** (Debian 12 oder neuer, auch eine VM geht) – darin als root:
+**Schon einen Container?** (Debian 12 oder 13, Ubuntu 24.04; auch eine VM geht) – darin als root:
 
 ```sh
 apt-get update && apt-get install -y curl
