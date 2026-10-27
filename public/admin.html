@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Liveticker – Status</title>
+<link rel="stylesheet" href="/ticker.css">
+<link rel="stylesheet" href="/config.css">
+<link rel="icon" href="{{LOGO}}">
+<style>
+  .panel { background: var(--card); border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .brand + .panel { border-radius: 0 0 12px 12px; }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+  dt { color: var(--muted); }
+  dd { margin: 0; overflow-wrap: anywhere; }
+  code { background: var(--bg); padding: 2px 6px; border-radius: 4px; }
+  .ok { color: #1d7a33; font-weight: 700; }
+  .bad { color: var(--live); font-weight: 700; }
+  ul.links { margin: 0; padding-left: 18px; }
+  ul.links li { margin: 4px 0; }
+  ul.links a { color: inherit; }
+  form { display: flex; gap: 8px; flex-wrap: wrap; }
+  form input { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); }
+  form button { font: inherit; padding: 8px 14px; border: 0; border-radius: 8px; background: var(--club); color: #fff; cursor: pointer; }
+  #resetMsg { margin-top: 8px; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="brand">
+    <img src="{{LOGO}}" alt="">
+    <div><b>{{TITLE}}</b><span>{{SUBTITLE}} · Status</span></div>
+  </div>
+  <section class="panel">
+    <dl>
+      <dt>BTS</dt><dd id="btsState">–</dd>
+      <dt>Turnier</dt><dd id="tName">–</dd>
+      <dt>Letzte Daten</dt><dd id="lastMsg">–</dd>
+      <dt>Courts</dt><dd id="courtCount">–</dd>
+      <dt>Spiele</dt><dd id="matchCount">–</dd>
+      <dt>Adresse für BTS</dt><dd><code id="wsUrl"></code></dd>
+    </dl>
+  </section>
+
+  <h2>Einrichtung in BTS</h2>
+  <section class="panel">
+    Turnier bearbeiten → <b>Ticker</b> aktivieren → Ticker-Adresse <code class="wsUrl"></code>
+    und Ticker-Passwort (= <code>TICKER_PASSWORD</code> aus <code>/etc/bts-liveticker.env</code>) eintragen.
+  </section>
+
+  <h2>Seiten &amp; Overlays</h2>
+  <section class="panel">
+    <ul class="links" id="links"></ul>
+  </section>
+
+  <h2>Ergebnisse zurücksetzen</h2>
+  <section class="panel">
+    <p class="muted" style="margin-top:0">Löscht alle gespeicherten Ergebnisse (Spiele, die gerade auf einem Court liegen, bleiben).
+      Ein neues Turnier in BTS (anderer Name) setzt die Liste automatisch zurück.</p>
+    <form id="reset">
+      <input type="password" id="pw" placeholder="Ticker-Passwort" autocomplete="current-password" required>
+      <button type="submit">Zurücksetzen</button>
+    </form>
+    <div id="resetMsg"></div>
+  </section>
+</main>
+<script src="/live.js"></script>
+<script>
+(function () {
+  'use strict';
+  var el = BL.el;
+  var wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/update';
+  document.getElementById('wsUrl').textContent = wsUrl;
+  document.querySelectorAll('.wsUrl').forEach(function (e) { e.textContent = wsUrl; });
+
+  function fmt(iso) {
+    return iso ? new Date(iso).toLocaleString('de-DE') : '–';
+  }
+
+  function link(href, text) {
+    var li = el('li');
+    var a = el('a', null, location.origin + href);
+    a.href = href;
+    a.target = '_blank';
+    li.appendChild(a);
+    if (text) li.appendChild(document.createTextNode(' – ' + text));
+    return li;
+  }
+
+  var shownCourts = null;
+  BL.connect(function (state) {
+    var b = state && state.bts;
+    var st = document.getElementById('btsState');
+    st.textContent = b && b.connected ? 'verbunden seit ' + fmt(b.connectedSince) : 'nicht verbunden';
+    st.className = b && b.connected ? 'ok' : 'bad';
+    document.getElementById('tName').textContent = (state && state.tournament.name) || '–';
+    document.getElementById('lastMsg').textContent = fmt(b && b.lastMessageAt);
+    var courts = (state && state.courts) || [];
+    var all = (state && state.matches) || [];
+    document.getElementById('courtCount').textContent = courts.length + ' (' + courts.filter(function (c) { return c.match; }).length + ' belegt)';
+    document.getElementById('matchCount').textContent = all.length + ' gespeichert, davon ' +
+      all.filter(function (m) { return m.status === 'finished'; }).length + ' beendet';
+
+    var key = courts.map(function (c) { return c.num; }).join(',');
+    if (key === shownCourts) return;
+    shownCourts = key;
+    var ul = document.getElementById('links');
+    ul.replaceChildren();
+    ul.appendChild(link('/', 'Liveticker für Zuschauer'));
+    ul.appendChild(link('/courts', 'Overlay: alle belegten Courts untereinander'));
+    ul.appendChild(link('/courts?cols=2', 'Overlay: Raster mit 2 Spalten'));
+    if (courts.length >= 2) {
+      ul.appendChild(link('/courts?layout=split&c=' + courts[0].num + ',' + courts[1].num, 'Overlay: zwei Courts links/rechts'));
+    }
+    courts.forEach(function (c) {
+      ul.appendChild(link('/court/' + encodeURIComponent(c.num), 'Overlay Court ' + c.num));
+    });
+  });
+
+  document.getElementById('reset').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var msg = document.getElementById('resetMsg');
+    if (!confirm('Alle gespeicherten Ergebnisse löschen?')) return;
+    fetch('/api/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: document.getElementById('pw').value }),
+    }).then(function (r) {
+      msg.textContent = r.ok ? 'Ergebnisse gelöscht.' : 'Falsches Passwort.';
+      msg.className = r.ok ? 'ok' : 'bad';
+    }).catch(function () {
+      msg.textContent = 'Fehler beim Senden.';
+      msg.className = 'bad';
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Courts Overlay</title>
+<link rel="stylesheet" href="/overlay.css">
+<link rel="stylesheet" href="/config.css">
+</head>
+<body>
+<div class="stage" id="stage"></div>
+<script src="/live.js"></script>
+<script src="/overlay.js"></script>
+<script>
+  // Mehrere Courts auf einer Seite.
+  //   ?c=1,2          nur diese Courts (Standard: alle)
+  //   ?layout=split   erster Court links, zweiter rechts (über die volle Breite)
+  //   ?cols=2         Raster mit 2 Spalten (Standard: untereinander)
+  //   ?pos=bottom     Leiste unten statt oben
+  BL.applyCommonParams();
+  var p = BL.params;
+  var opts = Overlay.options(p);
+  var stage = document.getElementById('stage');
+  var wanted = (p.get('c') || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  var split = p.get('layout') === 'split';
+  var cols = parseInt(p.get('cols'), 10);
+  if (split) stage.classList.add('split');
+  else if (cols > 1) {
+    stage.classList.add('grid');
+    stage.style.gridTemplateColumns = 'repeat(' + cols + ', auto)';
+  }
+  if (p.get('pos') === 'bottom') stage.classList.add('bottom');
+  var showIdle = p.get('showIdle') === '1';
+  var last = null;
+
+  function render(state) {
+    last = state;
+    stage.replaceChildren();
+    var nums = wanted.length ? wanted : ((state && state.courts) || []).map(function (c) { return c.num; });
+    nums.forEach(function (nr) {
+      var board = Overlay.courtBoard(state, nr, opts);
+      if (board.classList.contains('idle') && !showIdle) {
+        // Im Split-Layout Platz behalten, damit Court 2 rechts bleibt
+        if (!split) return;
+        board.classList.add('hidden');
+      }
+      stage.appendChild(board);
+    });
+  }
+  BL.connect(render);
+  setInterval(function () { if (last) render(last); }, 15000);
+</script>
+</body>
+</html>

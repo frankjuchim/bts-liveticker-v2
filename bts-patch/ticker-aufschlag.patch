@@ -1,0 +1,33 @@
+diff --git a/bts/ticker_conn.js b/bts/ticker_conn.js
+index 3dea153..4cffb32 100644
+--- a/bts/ticker_conn.js
++++ b/bts/ticker_conn.js
+@@ -19,9 +19,20 @@ function craft_court(c) {
+ 	return utils.pluck(c, ['num', 'match_id', '_id']);
+ }
+ 
++// Aufschlag und Positionen für den Liveticker (Aufschläger/Rückschläger):
++// ts = Team 1 schlägt auf, pe = je Team: steht Spieler 1 im rechten (geraden) Feld
++function craft_service(m) {
++	return {
++		ts: (typeof m.network_team1_serving === 'boolean') ? m.network_team1_serving : null,
++		pe: Array.isArray(m.network_teams_player1_even) ? m.network_teams_player1_even : null,
++	};
++}
++
+ function craft_match(m) {
+ 	const res = utils.pluck(m, ['_id']);
+ 	res.s = m.network_score;
++	Object.assign(res, craft_service(m));
++	if (typeof m.setup.is_doubles === 'boolean') res.d = m.setup.is_doubles;
+ 	res.sf = m.setup.scoring_format;
+ 	res.n = m.setup.event_name + ' ' + m.setup.match_name;
+ 	m.setup.teams.forEach((t, tidx) => {
+@@ -127,6 +138,7 @@ class TickerConn {
+ 			match: {
+ 				_id: match._id,
+ 				s: match.network_score,
++				...craft_service(match),
+ 			},
+ 		});
+ 	}

@@ -1,0 +1,170 @@
+# BTS Liveticker
+
+Öffentlicher **Turnier-Liveticker** und **Stream-Overlays (OBS)** für die Badminton-Turniersoftware
+**BTS** (Badminton Tournament System). Läuft als kleiner Container auf einem **Proxmox**-Server.
+
+- Liveticker für Zuschauer: alle Courts mit Spielstand, Ergebnisliste, Suche nach Spieler/Disziplin
+- Transparente Overlays für den Stream, einzeln pro Court oder mehrere Courts auf einmal
+- Aufschläger (Punkt) und im Doppel Rückschläger (unterstrichen) – mit einer kleinen
+  [BTS-Erweiterung](docs/BTS-UPGRADE.md)
+- Eigener Titel, eigene Farbe und eigenes Logo; Turniername und Turnierlogo kommen aus BTS
+- Keine Datenbank, keine Cloud: Node.js + eine JSON-Datei
+
+```
+ BTS (Halle)                          Proxmox: LXC-Container              Zuschauer / OBS
+ ┌──────────────┐  WebSocket          ┌────────────────────────┐   HTTP  ┌───────────────┐
+ │ Ticker aktiv │ ──────────────────► │ bts-liveticker (Node)  │ ──────► │ /  /court/1 … │
+ └──────────────┘  /ws/update         └────────────────────────┘   SSE   └───────────────┘
+```
+
+Der Server spricht dasselbe Ticker-Protokoll wie der Ticker aus dem BTS-Repo. BTS muss
+**nicht** geändert werden – nur für die Aufschlaganzeige gibt es eine optionale Erweiterung.
+
+## Installation auf Proxmox
+
+Auf dem **Proxmox-Host** als root (Shell im Web-UI: *Datacenter → Knoten → Shell*):
+
+```sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/deploy/proxmox-create-lxc.sh)"
+```
+
+Das Skript lädt eine Debian-Vorlage, legt einen unprivilegierten LXC-Container an
+(1 Kern, 512 MB RAM, 4 GB Platte, DHCP, startet mit dem Host) und installiert den Liveticker.
+Am Ende stehen Adresse und Ticker-Passwort im Terminal.
+
+Einstellungen über Variablen, z. B. feste IP und anderer Speicher:
+
+```sh
+CTID=120 IP=192.168.1.50/24 GW=192.168.1.1 STORAGE=local-zfs \
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/deploy/proxmox-create-lxc.sh)"
+```
+
+| Variable | Standard | |
+| --- | --- | --- |
+| `CTID` | nächste freie ID | Container-ID |
+| `CT_HOSTNAME` | `bts-liveticker` | Hostname |
+| `STORAGE` | `local-lvm` | Speicher für die Container-Platte |
+| `TEMPLATE_STORAGE` | `local` | Speicher für die Debian-Vorlage |
+| `BRIDGE` | `vmbr0` | Netzwerkbrücke |
+| `IP` / `GW` | `dhcp` | z. B. `192.168.1.50/24` und Gateway |
+| `VLAN` | – | VLAN-Tag |
+| `DISK` / `MEMORY` | `4` / `512` | GB / MB |
+
+**Schon einen Container?** (Debian 12 oder neuer, auch eine VM geht) – darin als root:
+
+```sh
+apt-get update && apt-get install -y curl
+curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/deploy/install.sh | bash
+```
+
+### Update
+
+Im Container als root:
+
+```sh
+bash /opt/bts-liveticker/deploy/update.sh
+```
+
+Konfiguration und gespeicherte Ergebnisse bleiben erhalten.
+
+## Konfiguration
+
+`/etc/bts-liveticker.env` im Container, danach `systemctl restart bts-liveticker`:
+
+| Variable | Standard | |
+| --- | --- | --- |
+| `TICKER_PASSWORD` | zufällig erzeugt | Passwort, das in BTS eingetragen wird |
+| `PORT` | `80` | HTTP-Port |
+| `TITLE` | `Badminton` | Überschrift im Kopf, z. B. Vereinsname |
+| `SUBTITLE` | `Turnier-Liveticker` | Zeile darunter |
+| `ACCENT` | `#1f5f99` | Akzentfarbe (Kopf, Court-Karten, Overlays), z. B. Vereinsfarbe |
+| `LOGO_FILE` | – | Pfad zu einem eigenen Logo |
+| `DATA_DIR` | `/var/lib/bts-liveticker` | gespeicherter Stand |
+
+Eigenes Logo: einfach als `/var/lib/bts-liveticker/logo.png` (oder `.svg`, `.jpg`, `.webp`) ablegen
+und den Dienst neu starten – ohne Logo erscheint ein Federball-Symbol.
+Vom Proxmox-Host aus: `pct push <CTID> logo.png /var/lib/bts-liveticker/logo.png`.
+
+Log ansehen: `journalctl -u bts-liveticker -f`
+
+## BTS verbinden
+
+In BTS: Turnier bearbeiten → **Ticker** aktivieren →
+
+- **Ticker-Adresse:** `ws://<IP-des-Containers>/ws/update`
+  (mit HTTPS über einen Reverse-Proxy: `wss://<domain>/ws/update`)
+- **Ticker-Passwort:** `TICKER_PASSWORD` aus der Konfiguration
+
+Auf `http://<IP>/admin` steht danach „verbunden“. Dort gibt es auch alle Overlay-Links.
+
+## Von außen erreichbar machen
+
+Im Hallen-/Vereinsnetz reicht die IP des Containers. Sollen Zuschauer von unterwegs
+zusehen, braucht es eine öffentliche Adresse mit HTTPS, z. B.:
+
+- **Reverse-Proxy** (Nginx Proxy Manager, Caddy, Traefik, …) auf den Container, Port 80.
+  Wichtig: **WebSocket-Unterstützung** einschalten (bei Nginx Proxy Manager: „Websockets Support“).
+  Nginx-Beispiel:
+  ```nginx
+  location / {
+      proxy_pass http://192.168.1.50;
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+      proxy_set_header Host $host;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_buffering off;          # für die Live-Updates (Server-Sent Events)
+      proxy_read_timeout 1h;
+  }
+  ```
+- **Cloudflare Tunnel** (ohne Portfreigabe): `cloudflared` im Container installieren und
+  einen Public Hostname auf `http://localhost:80` zeigen lassen – WebSockets gehen dort von selbst.
+
+## Seiten
+
+| URL | Inhalt |
+| --- | --- |
+| `/` | Liveticker für Zuschauer |
+| `/court/<nr>` | Overlay für einen Court (transparenter Hintergrund) |
+| `/courts` | Overlay mehrerer Courts (Standard: alle belegten untereinander) |
+| `/admin` | Verbindungsstatus, Overlay-Links, Ergebnisse zurücksetzen |
+| `/api/state` | Aktueller Stand als JSON |
+
+### Parameter für die Overlays
+
+| Parameter | Wirkung | Beispiel |
+| --- | --- | --- |
+| `c` | Nur bestimmte Courts (`/courts`) | `/courts?c=1,2` |
+| `layout=split` | Erster Court links, zweiter rechts (`/courts`) | `/courts?layout=split&c=1,2` |
+| `cols` | Raster mit mehreren Spalten (`/courts`) | `/courts?cols=2` |
+| `pos=bottom` | Leiste unten statt oben (`/courts`) | `/courts?pos=bottom` |
+| `scale` | Größe skalieren | `?scale=1.5` |
+| `names=full` | Volle Vornamen statt „M. Mustermann“ | `?names=full` |
+| `sets=0` | Abgeschlossene Sätze ausblenden | `?sets=0` |
+| `linger` | Minuten, die ein beendetes Spiel nach Freigabe des Courts stehen bleibt (Standard 5) | `?linger=0` |
+| `showIdle=1` | Freien Court als „Kein laufendes Spiel“ zeigen | `?showIdle=1` |
+| `bg` | Hintergrundfarbe (z. B. Chroma-Key) | `?bg=00ff00` |
+
+In OBS: *Quelle hinzufügen → Browser*, URL eintragen, 1920 × 1080.
+
+Anzeige: Spalten = abgeschlossene Sätze, weißes Feld = Punkte im laufenden Satz,
+✓ = Sieger, Punkt = Aufschläger, unterstrichen = Rückschläger (Doppel), „Gleich“ =
+Spiel aufgerufen, aber noch ohne Punkte.
+
+## Was BTS schickt
+
+- `tset` – alle Courts und die Spiele darauf, Turniername, turnier.de-Link, Turnierlogo
+- `tupdate_match` – neuer Spielstand eines Spiels (bei jedem Punkt)
+
+BTS schickt nur Spiele, die gerade auf einem Court liegen. Der Liveticker merkt sich deshalb
+jedes Spiel, das einmal auf einem Court war, und baut daraus die Ergebnisliste (max. 400 Spiele).
+Wechselt der Turniername in BTS, wird die Liste automatisch geleert; sonst über `/admin`.
+
+## Entwicklung
+
+```sh
+npm install
+PORT=8080 TICKER_PASSWORD=test node server.js
+node tools/fake-bts.js ws://localhost:8080/ws/update test   # simuliert BTS mit 4 Courts
+npm test
+```

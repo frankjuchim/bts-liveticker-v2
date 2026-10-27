@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turnier-Liveticker</title>
+<link rel="stylesheet" href="/ticker.css">
+<link rel="stylesheet" href="/config.css">
+<link rel="icon" href="{{LOGO}}">
+</head>
+<body>
+<main class="wrap">
+  <div class="brand">
+    <img src="{{LOGO}}" alt="">
+    <div><b>{{TITLE}}</b><span>{{SUBTITLE}}</span></div>
+  </div>
+  <header class="event" id="event">
+    <img class="t-logo" id="tLogo" alt="" hidden>
+    <div class="t-text">
+      <h1 id="tName">Turnier-Liveticker</h1>
+      <div class="t-meta" id="tMeta"></div>
+    </div>
+    <a class="t-link" id="tLink" target="_blank" rel="noopener" hidden>Alle Spiele auf turnier.de ›</a>
+  </header>
+
+  <div class="tools">
+    <input type="search" id="q" placeholder="Spieler oder Disziplin suchen …" autocomplete="off">
+    <label class="toggle"><input type="checkbox" id="showIdle"> freie Courts zeigen</label>
+  </div>
+
+  <section>
+    <h2>Auf den Courts</h2>
+    <div class="now" id="now"></div>
+    <p class="empty muted" id="nowEmpty" hidden>Gerade läuft kein Spiel.</p>
+  </section>
+
+  <section>
+    <h2>Ergebnisse</h2>
+    <div class="games" id="games"></div>
+    <p class="empty muted" id="gamesEmpty" hidden>Noch keine Ergebnisse.</p>
+    <button class="more" id="more" hidden>Weitere Ergebnisse anzeigen</button>
+  </section>
+
+  <footer class="foot">
+    <span id="conn" class="conn">Verbinde …</span>
+  </footer>
+</main>
+
+<script src="/live.js"></script>
+<script>
+(function () {
+  'use strict';
+  BL.applyCommonParams();
+  var el = BL.el;
+  var last = null;
+  var limit = 30;
+  var q = document.getElementById('q');
+  var showIdle = document.getElementById('showIdle');
+
+  try { showIdle.checked = localStorage.getItem('showIdle') === '1'; } catch (e) { /* egal */ }
+  q.value = BL.params.get('q') || '';
+
+  function matches(m, term) {
+    if (!term) return true;
+    var hay = [m.name].concat(m.home, m.away).join(' ').toLowerCase();
+    return term.split(/\s+/).every(function (t) { return hay.indexOf(t) >= 0; });
+  }
+
+  function badge(m) {
+    if (m.status === 'live') return el('span', 'badge live', 'Live');
+    if (m.status === 'called') return el('span', 'badge called', 'Aufruf');
+    if (m.status === 'finished') return el('span', 'badge done', 'Beendet');
+    return el('span', 'badge done', 'Beendet');
+  }
+
+  function nowCard(state, c) {
+    var m = BL.match(state, c.match);
+    var card = el('article', 'now-card');
+    var head = el('div', 'now-head');
+    head.appendChild(el('span', 'court', 'Court ' + c.num));
+    if (!m) {
+      card.classList.add('idle');
+      head.appendChild(el('span', 'free', 'frei'));
+      card.appendChild(head);
+      var lastM = BL.match(state, c.last);
+      if (lastM) {
+        var info = el('div', 'idle-last');
+        info.appendChild(el('span', 'muted', 'Zuletzt: '));
+        info.appendChild(document.createTextNode(lastM.name + ' · ' + resultLine(lastM)));
+        card.appendChild(info);
+      }
+      return card;
+    }
+    head.appendChild(el('span', 'disc', m.name));
+    head.appendChild(badge(m));
+    card.appendChild(head);
+
+    var split = BL.splitSets(m);
+    ['home', 'away'].forEach(function (side) {
+      var row = el('div', 'now-row ' + side + (m.winner === side ? ' winner' : ''));
+      var who = el('div', 'who');
+      var names = BL.playerSpans(m, side);
+      if (!names.length) who.appendChild(el('span', 'names muted', 'N. N.'));
+      names.forEach(function (n) { n.classList.add('names'); who.appendChild(n); });
+      row.appendChild(who);
+      split.done.forEach(function (s) {
+        row.appendChild(el('span', 'set' + (s.winner === side ? ' won' : ''), String(s[side])));
+      });
+      if (split.current) row.appendChild(el('span', 'pts', String(split.current[side])));
+      card.appendChild(row);
+    });
+    return card;
+  }
+
+  function resultLine(m) {
+    return m.sets.map(function (s) { return s.home + ':' + s.away; }).join(', ') || '–';
+  }
+
+  function gameRow(m) {
+    var row = el('article', 'game ' + m.status);
+    var title = el('div', 'g-title');
+    title.appendChild(el('span', 'g-name', m.name));
+    var meta = [];
+    if (m.lastCourt) meta.push('Court ' + m.lastCourt);
+    if (m.finishedAt) meta.push(BL.time(m.finishedAt) + ' Uhr');
+    title.appendChild(el('span', 'g-meta', meta.join(' · ')));
+    if (m.status === 'ended') title.appendChild(el('span', 'badge done', 'ohne Ergebnis'));
+    row.appendChild(title);
+
+    var body = el('div', 'g-body');
+    ['home', 'away'].forEach(function (side) {
+      var p = el('div', 'g-side ' + side + (m.winner === side ? ' winner' : ''));
+      var names = BL.players(m[side]);
+      if (!names.length) p.appendChild(el('span', 'muted', 'N. N.'));
+      names.forEach(function (n) { p.appendChild(el('span', 'g-player', n)); });
+      body.appendChild(p);
+    });
+    var res = el('div', 'g-result');
+    res.appendChild(el('span', 'g-won', m.sets.length ? m.setsWon[0] + ':' + m.setsWon[1] : '–'));
+    var sets = el('span', 'g-sets');
+    sets.textContent = m.sets.map(function (s) { return s.home + ':' + s.away; }).join('  ');
+    res.appendChild(sets);
+    body.insertBefore(res, body.lastChild);
+    row.appendChild(body);
+    return row;
+  }
+
+  function render(state) {
+    last = state;
+    var t = (state && state.tournament) || {};
+    var term = q.value.trim().toLowerCase();
+
+    document.getElementById('tName').textContent = t.name || 'Turnier-Liveticker';
+    document.title = (t.name ? t.name + ' – ' : '') + 'Liveticker';
+    var logo = document.getElementById('tLogo');
+    if (t.logo) {
+      var src = '/tournament-logo?v=' + t.logo;
+      if (logo.getAttribute('src') !== src) logo.src = src;
+      logo.style.background = t.logoBg || '';
+      logo.hidden = false;
+    } else logo.hidden = true;
+    var link = document.getElementById('tLink');
+    link.hidden = !t.url;
+    if (t.url) link.href = t.url;
+
+    var all = (state && state.matches) || [];
+    var live = all.filter(function (m) { return m.status === 'live'; }).length;
+    var done = all.filter(function (m) { return m.status === 'finished'; }).length;
+    var meta = [];
+    if (state && state.courts && state.courts.length) {
+      meta.push(live === 1 ? '1 Spiel läuft' : live + ' Spiele laufen');
+      meta.push(done + ' beendet');
+    }
+    document.getElementById('tMeta').textContent = meta.join(' · ');
+
+    // Courts
+    var now = document.getElementById('now');
+    now.replaceChildren();
+    ((state && state.courts) || []).forEach(function (c) {
+      var m = BL.match(state, c.match);
+      if (!m && (!showIdle.checked || term)) return;
+      if (m && !matches(m, term)) return;
+      now.appendChild(nowCard(state, c));
+    });
+    document.getElementById('nowEmpty').hidden = now.children.length > 0;
+
+    // Ergebnisse: zuletzt beendete zuerst
+    var results = all
+      .filter(function (m) { return (m.status === 'finished' || m.status === 'ended') && matches(m, term); })
+      .sort(function (a, b) { return (b.finishedAt || '').localeCompare(a.finishedAt || ''); });
+    var list = document.getElementById('games');
+    list.replaceChildren();
+    results.slice(0, limit).forEach(function (m) { list.appendChild(gameRow(m)); });
+    document.getElementById('gamesEmpty').hidden = results.length > 0;
+    document.getElementById('more').hidden = results.length <= limit;
+    updateConn();
+  }
+
+  function updateConn() {
+    var c = document.getElementById('conn');
+    var b = last && last.bts;
+    var seen = last && last.updatedAt;
+    var t = seen ? new Date(seen).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null;
+    if (!seen) {
+      c.textContent = 'Warte auf Daten aus der Turniersoftware …';
+      c.className = 'conn warn';
+    } else if (b && !b.connected) {
+      c.textContent = 'Keine Verbindung zur Turniersoftware – Stand von ' + t + ' Uhr';
+      c.className = 'conn warn';
+    } else {
+      c.textContent = 'Live verbunden · zuletzt aktualisiert ' + t + ' Uhr';
+      c.className = 'conn ok';
+    }
+  }
+
+  function rerender() { if (last) render(last); }
+  q.addEventListener('input', rerender);
+  showIdle.addEventListener('change', function () {
+    try { localStorage.setItem('showIdle', showIdle.checked ? '1' : '0'); } catch (e) { /* egal */ }
+    rerender();
+  });
+  document.getElementById('more').addEventListener('click', function () { limit += 30; rerender(); });
+  setInterval(updateConn, 5000);
+
+  BL.connect(render);
+})();
+</script>
+</body>
+</html>

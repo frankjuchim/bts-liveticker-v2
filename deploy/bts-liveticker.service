@@ -1,0 +1,20 @@
+[Unit]
+Description=BTS Liveticker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=btsticker
+Group=btsticker
+WorkingDirectory=/opt/bts-liveticker
+EnvironmentFile=/etc/bts-liveticker.env
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+# Port 80 ohne root
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

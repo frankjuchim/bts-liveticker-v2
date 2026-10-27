@@ -1,0 +1,111 @@
+/* Stream-Overlays: transparenter Hintergrund, gut lesbar über Video */
+:root {
+  /* Akzentfarbe: wird von /config.css (ACCENT) überschrieben.
+     Feste Werte statt color-mix(): der Browser in OBS ist teils älter. */
+  --scale: 1;
+  --club: #1f5f99;
+  --panel: rgba(31, 95, 153, 0.94);
+  --panel-2: rgba(22, 67, 107, 0.97);
+  --text: #fff;
+  --muted: rgba(255, 255, 255, 0.72);
+  color-scheme: normal;
+}
+
+/* Hintergrund im Stream immer leer/transparent – nur die Anzeigen sind sichtbar */
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  overflow: hidden;
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--text);
+}
+
+.stage {
+  display: inline-flex;
+  flex-direction: column;
+  gap: calc(10px * var(--scale));
+  padding: calc(16px * var(--scale));
+  font-size: calc(22px * var(--scale));
+}
+.stage.grid { display: inline-grid; }
+.stage.bottom:not(.split) { position: fixed; left: 0; bottom: 0; }
+.board.hidden { visibility: hidden; }
+
+/* Nebeneinander über die volle Breite: erster Court links, zweiter rechts */
+.stage.split {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  box-sizing: border-box;
+  width: 100vw;
+}
+.stage.split.bottom { align-items: flex-end; min-height: 100vh; }
+.stage.split .board { flex: none; }
+
+.board {
+  /* feste Breite – ändert sich weder mit Namen noch mit der Zahl der Sätze */
+  width: calc(640px * var(--scale));
+  box-sizing: border-box;
+  background: var(--panel);
+  border-radius: calc(8px * var(--scale));
+  overflow: hidden;
+}
+
+.board-head, .board-idle {
+  display: flex;
+  white-space: nowrap;
+  overflow: hidden;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.25em 0.6em;
+  background: var(--panel-2);
+  font-size: 0.68em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.board-idle { padding: 0.6em; font-size: 0.8em; color: var(--muted); }
+.tag { color: #fff; font-weight: 800; flex: none; }
+.disc { font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* feste Breite: „Live“, „Gleich“ und „Beendet“ sind gleich breit */
+.state { flex: none; margin-left: auto; width: 6.4em; box-sizing: border-box; text-align: center; font-weight: 700; padding: 0.1em 0; border-radius: 3px; white-space: nowrap; }
+.state.live { background: #fff; color: var(--club); }
+.state.live::before { content: "● "; animation: blink 1.4s infinite; }
+.state.done, .state.called { background: rgba(255, 255, 255, 0.2); }
+@keyframes blink { 50% { opacity: 0.2; } }
+
+.row {
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+.row + .row { border-top-color: rgba(255, 255, 255, 0.18); }
+.row.winner .names { font-weight: 700; }
+.row.winner .names::after { content: " ✓"; }
+
+.team {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.3em 0.6em;
+  min-width: 0;
+}
+.names { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.scores { flex: none; display: flex; justify-content: flex-end; align-items: stretch; }
+.set, .points {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+.set { width: 2.2em; color: var(--muted); font-size: 0.85em; }
+.set.won { color: var(--text); font-weight: 700; }
+.points { width: 2.3em; background: #fff; color: var(--club); font-weight: 800; font-size: 1.15em; }
+
+/* Aufschläger (Punkt) und Rückschläger im Doppel (unterstrichen) */
+.name.srv::before { content: ""; display: inline-block; width: 0.4em; height: 0.4em; margin: 0 0.35em 0.1em 0; border-radius: 50%; background: #fff; vertical-align: middle; }
+.name.rcv { text-decoration: underline; text-decoration-thickness: 0.08em; text-underline-offset: 0.18em; }
