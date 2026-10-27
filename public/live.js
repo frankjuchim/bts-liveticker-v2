@@ -26,6 +26,7 @@
       state = JSON.parse(e.data);
       onState(state);
     });
+    es.addEventListener('brand', function (e) { applyBrand(JSON.parse(e.data)); });
     es.addEventListener('matches', function (e) {
       if (!state) return;
       var d = JSON.parse(e.data);
@@ -38,6 +39,18 @@
       state.bts = d.bts;
       onState(state);
     });
+  }
+
+  // Erscheinungsbild wurde im Admin-Panel geändert: Farben und Titel ohne Neuladen tauschen
+  var brandListeners = [];
+  function applyBrand(b) {
+    var link = document.querySelector('link[href^="/config.css"]');
+    if (link) link.href = '/config.css?v=' + encodeURIComponent(b.version);
+    document.querySelectorAll('[data-brand]').forEach(function (n) {
+      var v = b[n.getAttribute('data-brand')];
+      if (v != null) n.textContent = v;
+    });
+    brandListeners.forEach(function (fn) { fn(b); });
   }
 
   function indexOf(list, id) {
@@ -149,5 +162,6 @@
     playerSpans: playerSpans,
     time: time,
     applyCommonParams: applyCommonParams,
+    onBrand: function (fn) { brandListeners.push(fn); },
   };
 })();

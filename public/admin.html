@@ -20,17 +20,37 @@
   ul.links { margin: 0; padding-left: 18px; }
   ul.links li { margin: 4px 0; }
   ul.links a { color: inherit; }
-  form { display: flex; gap: 8px; flex-wrap: wrap; }
-  form input { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); }
-  form button { font: inherit; padding: 8px 14px; border: 0; border-radius: 8px; background: var(--club); color: #fff; cursor: pointer; }
-  #resetMsg { margin-top: 8px; }
+  #reset, .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  #reset input, .actions input { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); }
+  #reset button, .actions button { font: inherit; padding: 8px 14px; border: 0; border-radius: 8px; background: var(--club); color: #fff; cursor: pointer; }
+  #resetMsg, #brandMsg { margin-top: 8px; }
+  .fields { display: grid; grid-template-columns: max-content 1fr; gap: 10px 14px; align-items: center; }
+  .fields label { color: var(--muted); }
+  .fields input[type=text] { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); width: 100%; max-width: 420px; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .swatch { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; padding: 0; box-shadow: 0 0 0 1px var(--line); }
+  .swatch.on { border-color: var(--card); box-shadow: 0 0 0 2px var(--text); }
+  .custom-color { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+  .custom-color input[type=color] { width: 44px; height: 34px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; }
+  .custom-color input[type=text] { width: 110px; font-family: monospace; font-size: 0.95rem; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); }
+  .preview { margin-top: 16px; border-radius: 10px; overflow: hidden; max-width: 420px; color: #fff; }
+  .pv-brand { padding: 10px 14px; }
+  .pv-brand b { display: block; }
+  .pv-brand span { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
+  .pv-head { padding: 5px 14px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
+  .pv-row { display: flex; justify-content: space-between; align-items: stretch; border-top: 1px solid rgba(255,255,255,0.18); }
+  .pv-row span { padding: 6px 14px; }
+  .pv-row b { background: #fff; width: 44px; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; }
+  .warn { color: var(--live); margin-top: 8px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; align-items: center; }
+  .actions button.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
 </style>
 </head>
 <body>
 <main class="wrap">
   <div class="brand">
     <img src="{{LOGO}}" alt="">
-    <div><b>{{TITLE}}</b><span>{{SUBTITLE}} · Status</span></div>
+    <div><b data-brand="title">{{TITLE}}</b><span><span data-brand="subtitle">{{SUBTITLE}}</span> · Status</span></div>
   </div>
   <section class="panel">
     <dl>
@@ -52,6 +72,42 @@
   <h2>Seiten &amp; Overlays</h2>
   <section class="panel">
     <ul class="links" id="links"></ul>
+  </section>
+
+  <h2>Erscheinungsbild</h2>
+  <section class="panel">
+    <form id="brand">
+      <div class="fields">
+        <label for="bTitle">Titel</label>
+        <input type="text" id="bTitle" maxlength="80" placeholder="z. B. Vereinsname">
+        <label for="bSubtitle">Untertitel</label>
+        <input type="text" id="bSubtitle" maxlength="80" placeholder="z. B. Turnier-Liveticker">
+      </div>
+      <h3 style="font-size:0.95rem;margin:18px 0 8px">Farbe</h3>
+      <div class="swatches" id="swatches"></div>
+      <div class="custom-color">
+        <input type="color" id="bColor" aria-label="Eigene Farbe wählen">
+        <input type="text" id="bHex" maxlength="7" aria-label="Farbe als Hex-Wert">
+        <span class="muted">eigene Farbe</span>
+      </div>
+      <div class="warn" id="contrastWarn" hidden>Diese Farbe ist sehr hell – weiße Schrift darauf ist schlecht lesbar.</div>
+
+      <div class="preview" id="preview" aria-label="Vorschau">
+        <div class="pv-brand"><b id="pvTitle"></b><span id="pvSubtitle"></span></div>
+        <div class="pv-head" id="pvHead">Court 1 · HE O19 · Live</div>
+        <div class="pv-row"><span>● M. Mustermann</span><b class="pv-pts">11</b></div>
+        <div class="pv-row"><span>T. Test</span><b class="pv-pts">9</b></div>
+      </div>
+
+      <div class="actions">
+        <input type="password" id="bPw" placeholder="Ticker-Passwort" autocomplete="current-password" required>
+        <button type="submit">Speichern</button>
+        <button type="button" class="secondary" id="bDefault">Auf Standard zurücksetzen</button>
+      </div>
+      <p class="muted" style="margin-bottom:0">Gilt sofort für Ticker und Overlays – offene Seiten übernehmen es ohne Neuladen.
+        Standardwerte kommen aus <code>/etc/bts-liveticker.env</code>.</p>
+    </form>
+    <div id="brandMsg"></div>
   </section>
 
   <h2>Ergebnisse zurücksetzen</h2>
@@ -118,6 +174,112 @@
     });
   });
 
+  // ---- Erscheinungsbild
+  var bTitle = document.getElementById('bTitle');
+  var bSubtitle = document.getElementById('bSubtitle');
+  var bColor = document.getElementById('bColor');
+  var bHex = document.getElementById('bHex');
+  var accent = '#1f5f99';
+  var brand = null;
+
+  function validHex(v) { return /^#[0-9a-f]{6}$/i.test(v); }
+
+  function contrast(hex) {
+    var c = [1, 3, 5].map(function (i) { return parseInt(hex.slice(i, i + 2), 16) / 255; })
+      .map(function (v) { return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 1.05 / (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] + 0.05);
+  }
+
+  function darker(hex) {
+    return '#' + [1, 3, 5].map(function (i) {
+      return Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.7).toString(16).padStart(2, '0');
+    }).join('');
+  }
+
+  function setAccent(v) {
+    if (!validHex(v)) return;
+    accent = v.toLowerCase();
+    bColor.value = accent;
+    if (document.activeElement !== bHex) bHex.value = accent;
+    document.querySelectorAll('.swatch').forEach(function (s) {
+      s.classList.toggle('on', s.dataset.color === accent);
+    });
+    preview();
+  }
+
+  function preview() {
+    document.getElementById('pvTitle').textContent = bTitle.value.trim() || (brand && brand.defaults.title) || '';
+    document.getElementById('pvSubtitle').textContent = bSubtitle.value.trim() || (brand && brand.defaults.subtitle) || '';
+    var pv = document.getElementById('preview');
+    pv.style.background = accent;
+    document.querySelector('.pv-brand').style.background = accent;
+    document.getElementById('pvHead').style.background = darker(accent);
+    document.querySelectorAll('.pv-pts').forEach(function (b) { b.style.color = accent; });
+    document.getElementById('contrastWarn').hidden = contrast(accent) >= 3;
+  }
+
+  function fill(b) {
+    brand = b;
+    bTitle.placeholder = b.defaults.title;
+    bSubtitle.placeholder = b.defaults.subtitle;
+    bTitle.value = b.custom.title || '';
+    bSubtitle.value = b.custom.subtitle || '';
+    var sw = document.getElementById('swatches');
+    sw.replaceChildren();
+    b.presets.forEach(function (p) {
+      var btn = el('button', 'swatch');
+      btn.type = 'button';
+      btn.title = p.name;
+      btn.setAttribute('aria-label', p.name);
+      btn.dataset.color = p.color;
+      btn.style.background = p.color;
+      btn.addEventListener('click', function () { setAccent(p.color); });
+      sw.appendChild(btn);
+    });
+    setAccent(b.accent);
+  }
+
+  fetch('/api/brand', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(fill);
+  BL.onBrand(function (b) { if (!document.getElementById('brand').contains(document.activeElement)) fill(b); });
+
+  bColor.addEventListener('input', function () { setAccent(bColor.value); });
+  bHex.addEventListener('input', function () {
+    var v = bHex.value.trim();
+    if (v && v[0] !== '#') v = '#' + v;
+    setAccent(v);
+  });
+  bHex.addEventListener('blur', function () { bHex.value = accent; });
+  bTitle.addEventListener('input', preview);
+  bSubtitle.addEventListener('input', preview);
+
+  function saveBrand(payload) {
+    var msg = document.getElementById('brandMsg');
+    payload.password = document.getElementById('bPw').value;
+    if (!payload.password) { msg.textContent = 'Bitte das Ticker-Passwort eingeben.'; msg.className = 'bad'; return; }
+    fetch('/api/brand', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(function (r) {
+      return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+    }).then(function (x) {
+      if (x.ok) { fill(x.d); msg.textContent = 'Gespeichert.'; msg.className = 'ok'; }
+      else { msg.textContent = x.d.error || 'Fehler'; msg.className = 'bad'; }
+    }).catch(function () {
+      msg.textContent = 'Fehler beim Senden.';
+      msg.className = 'bad';
+    });
+  }
+
+  document.getElementById('brand').addEventListener('submit', function (e) {
+    e.preventDefault();
+    saveBrand({ title: bTitle.value, subtitle: bSubtitle.value, accent: accent });
+  });
+  document.getElementById('bDefault').addEventListener('click', function () {
+    if (confirm('Titel, Untertitel und Farbe auf die Standardwerte zurücksetzen?')) saveBrand({ reset: true });
+  });
+
+  // ---- Ergebnisse zurücksetzen
   document.getElementById('reset').addEventListener('submit', function (e) {
     e.preventDefault();
     var msg = document.getElementById('resetMsg');

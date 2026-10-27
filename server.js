@@ -16,7 +16,17 @@ const PORT = parseInt(process.env.PORT || '80', 10);
 const TICKER_PASSWORD = process.env.TICKER_PASSWORD || '';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const STATE_FILE = path.join(DATA_DIR, 'bts-liveticker.json');
-const BRAND = branding.load(process.env, DATA_DIR);
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+
+// Erscheinungsbild: Konfiguration + Einstellungen aus dem Admin-Panel
+let settings = {};
+try {
+  settings = branding.cleanSettings(JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')));
+} catch (e) {
+  if (e.code !== 'ENOENT') console.warn('Einstellungen verworfen:', e.message);
+}
+let BRAND = branding.load(process.env, DATA_DIR, settings);
+let brandVersion = Date.now().toString(36);
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PATCH_DIR = path.join(__dirname, 'bts-patch');
 const MAX_MESSAGE = 8 * 1024 * 1024;   // tset enthält das Turnierlogo als Base64
@@ -308,6 +318,47 @@ function readBody(req, cb) {
   req.on('end', () => cb(Buffer.concat(chunks).toString('utf8')));
 }
 
+function brandInfo() {
+  const defaults = branding.load(process.env, DATA_DIR);
+  return {
+    title: BRAND.title,
+    subtitle: BRAND.subtitle,
+    accent: BRAND.accent,
+    logoUrl: BRAND.logoUrl,
+    version: brandVersion,
+    custom: settings,
+    defaults: { title: defaults.title, subtitle: defaults.subtitle, accent: defaults.accent },
+    presets: branding.PRESETS,
+  };
+}
+
+// Titel/Untertitel/Farbe aus dem Admin-Panel speichern ({ reset: true } = Standard)
+function handleBrand(req, res) {
+  readBody(req, (body) => {
+    let input = {};
+    try { input = JSON.parse(body) || {}; } catch (e) { /* leer */ }
+    if (!passwordOk(input.password)) return send(res, 401, '{"error":"Falsches Passwort"}');
+    let next;
+    try {
+      next = input.reset ? {} : branding.cleanSettings(input);
+    } catch (e) {
+      return send(res, 400, JSON.stringify({ error: e.message }));
+    }
+    fs.mkdir(DATA_DIR, { recursive: true }, () => {
+      fs.writeFile(SETTINGS_FILE, JSON.stringify(next, null, 2), (err) => {
+        if (err) return send(res, 500, JSON.stringify({ error: 'Speichern fehlgeschlagen: ' + err.message }));
+        settings = next;
+        BRAND = branding.load(process.env, DATA_DIR, settings);
+        brandVersion = Date.now().toString(36);
+        const info = JSON.stringify(brandInfo());
+        sendAll('brand', info);
+        console.log('Erscheinungsbild geändert:', JSON.stringify(settings));
+        send(res, 200, info);
+      });
+    });
+  });
+}
+
 // Ergebnisliste leeren (z. B. vor einem neuen Turniertag)
 function handleReset(req, res) {
   readBody(req, (body) => {
@@ -326,8 +377,10 @@ function handleReset(req, res) {
 const server = http.createServer((req, res) => {
   const { pathname } = new URL(req.url, 'http://x');
   if (req.method === 'POST' && pathname === '/api/reset') return handleReset(req, res);
+  if (req.method === 'POST' && pathname === '/api/brand') return handleBrand(req, res);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, '{"error":"method"}');
   if (pathname === '/api/state') return send(res, 200, stateJson);
+  if (pathname === '/api/brand') return send(res, 200, JSON.stringify(brandInfo()));
   if (pathname === '/api/events') return handleEvents(req, res);
   if (pathname === '/tournament-logo') return serveLogo(req, res);
   if (pathname === '/config.css') return send(res, 200, BRAND.css, 'text/css; charset=utf-8', { 'Cache-Control': 'no-cache' });

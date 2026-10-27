@@ -67,9 +67,19 @@ bash /opt/bts-liveticker/deploy/update.sh
 
 Konfiguration und gespeicherte Ergebnisse bleiben erhalten.
 
+## Erscheinungsbild im Admin-Panel
+
+Unter `http://<IP>/admin` → **Erscheinungsbild** lassen sich Titel, Untertitel und Farbe
+ändern – aus zehn vorgegebenen Farben oder frei per Farbwähler/Hex-Wert, mit Vorschau.
+Gespeichert wird mit dem Ticker-Passwort; offene Ticker-Seiten und OBS-Overlays übernehmen
+die Änderung sofort, ohne Neuladen. „Auf Standard zurücksetzen“ nimmt wieder die Werte
+aus der Konfigurationsdatei. (Gespeichert in `/var/lib/bts-liveticker/settings.json`.)
+
 ## Konfiguration
 
-`/etc/bts-liveticker.env` im Container, danach `systemctl restart bts-liveticker`:
+`/etc/bts-liveticker.env` im Container, danach `systemctl restart bts-liveticker`.
+`TITLE`, `SUBTITLE` und `ACCENT` sind die Standardwerte – im Admin-Panel geänderte Werte
+haben Vorrang:
 
 | Variable | Standard | |
 | --- | --- | --- |
@@ -127,7 +137,7 @@ zusehen, braucht es eine öffentliche Adresse mit HTTPS, z. B.:
 | `/` | Liveticker für Zuschauer |
 | `/court/<nr>` | Overlay für einen Court (transparenter Hintergrund) |
 | `/courts` | Overlay mehrerer Courts (Standard: alle belegten untereinander) |
-| `/admin` | Verbindungsstatus, Overlay-Links, Ergebnisse zurücksetzen |
+| `/admin` | Verbindungsstatus, Overlay-Links, Erscheinungsbild, Ergebnisse zurücksetzen |
 | `/api/state` | Aktueller Stand als JSON |
 
 ### Parameter für die Overlays

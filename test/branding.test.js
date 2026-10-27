@@ -23,3 +23,23 @@ test('Ungültige Farbe fällt auf Standard zurück', () => {
   const b = branding.load({ ACCENT: 'rot' }, '/gibt-es-nicht');
   assert.match(b.css, /--club: #1f5f99;/);
 });
+
+test('Einstellungen aus dem Admin-Panel gehen vor, leere Felder nicht', () => {
+  const s = branding.cleanSettings({ title: '  BC Test ', subtitle: '', accent: '0A7D3B', foo: 'x' });
+  assert.deepStrictEqual(s, { title: 'BC Test', accent: '#0a7d3b' });
+  const b = branding.load({ TITLE: 'Aus Datei', SUBTITLE: 'Unter' }, '/gibt-es-nicht', s);
+  assert.strictEqual(b.title, 'BC Test');
+  assert.strictEqual(b.subtitle, 'Unter');
+  assert.strictEqual(b.accent, '#0a7d3b');
+});
+
+test('Ungültige Einstellungen werden abgelehnt', () => {
+  assert.throws(() => branding.cleanSettings({ accent: 'rot' }));
+  assert.throws(() => branding.cleanSettings({ title: 'x'.repeat(81) }));
+});
+
+test('Alle Farbvorschläge sind mit weißer Schrift gut lesbar', () => {
+  for (const p of branding.PRESETS) {
+    assert.ok(branding.contrastWithWhite(branding.parseHex(p.color)) >= 4.5, p.name);
+  }
+});
