@@ -52,8 +52,8 @@ TICKER_PASSWORD=$PASSWORD
 TITLE="Badminton"
 SUBTITLE="Turnier-Liveticker"
 ACCENT="#1f5f99"
-# Eigenes Logo: Datei nach $DATA_DIR/logo.png (oder .svg/.jpg/.webp) kopieren
-# oder hier einen Pfad angeben:
+# Logo, Titel und Farbe lassen sich auch im Admin-Panel (/admin) ändern.
+# Logo alternativ als Dateipfad:
 #LOGO_FILE=/pfad/zum/logo.png
 CONF
   chmod 640 "$ENV_FILE"

@@ -175,3 +175,14 @@ test('Ältere BTS-Versionen: Zählweise als c („5x11_15“)', () => {
   assert.strictEqual(m.bestOf, 5);
   assert.strictEqual(m.winner, 'home');
 });
+
+test('Erkennt, ob BTS die Aufschlag-Erweiterung hat', () => {
+  const s = store.emptyStore();
+  store.applyTset(s, event([], []), 't0');
+  assert.strictEqual(store.view(s).btsExtension, null, 'ohne Spiele nicht erkennbar');
+  store.applyTset(s, event([{ _id: 'c1', num: 1, match_id: 'm1' }], [m1]), 't1');
+  assert.strictEqual(store.view(s).btsExtension, false);
+  store.applyTset(s, event([{ _id: 'c1', num: 1, match_id: 'm1' }], [Object.assign({}, m1, { ts: true, pe: [true, true] })]), 't2');
+  assert.strictEqual(store.view(s).btsExtension, true);
+  assert.strictEqual(store.view(store.restore(JSON.parse(JSON.stringify(s)))).btsExtension, true);
+});

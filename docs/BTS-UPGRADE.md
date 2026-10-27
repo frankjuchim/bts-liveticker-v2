@@ -26,16 +26,59 @@ Verbindung zu BTP und an den Anzeigen in der Halle ändert sich nichts.
 Getestet mit `tlehr/bts` (`master`, `feat/bupws_v2`, `perf/server-responsiveness`) und
 `phihag/bts` (`master`).
 
-## Einspielen (empfohlen: Skript)
+## Wo wird was gemacht?
 
-Auf dem Rechner/Container, auf dem BTS läuft, **im BTS-Verzeichnis** (dort, wo der
-Ordner `bts/` mit `ticker_conn.js` liegt), als der Benutzer, dem die Installation gehört:
+Liveticker und BTS laufen meist auf **verschiedenen Maschinen** (z. B. zwei Container auf
+verschiedenen Proxmox-Servern). Die Erweiterung gehört **zu BTS**:
+
+```
+ Maschine A: BTS                          Maschine B: Liveticker (dieses Repo)
+ ┌───────────────────────────────┐        ┌──────────────────────────────┐
+ │ BTS-Verzeichnis               │  ws:// │ bts-liveticker               │
+ │  └─ bts/ticker_conn.js  ◄──── │ ─────► │                              │
+ │     HIER die Erweiterung      │        │ hier ist nichts zu tun       │
+ └───────────────────────────────┘        └──────────────────────────────┘
+```
+
+Am Liveticker ist nichts zu tun – er erkennt die Erweiterung automatisch. Ob sie aktiv ist,
+zeigt `http://<Liveticker>/admin` in der Zeile **Aufschlaganzeige**.
+
+## Einspielen – Schritt für Schritt
+
+### 1. Auf die BTS-Maschine kommen
+
+Je nachdem, wo BTS läuft:
+
+- **BTS in einem Proxmox-Container (LXC):** im Proxmox-Web-UI den BTS-Container auswählen →
+  **Konsole**. Oder auf dem Proxmox-Host, auf dem BTS liegt: `pct enter <CTID>`
+  (die CTID steht in der Liste links im Web-UI).
+- **BTS in einer VM oder auf einem Linux-Rechner:** per SSH, z. B. `ssh root@<IP-von-BTS>`.
+- **BTS unter Windows:** im BTS-Ordner „Git Bash“ öffnen (kommt mit Git für Windows) –
+  die Befehle unten funktionieren dort genauso; BTS danach von Hand neu starten.
+
+### 2. Ins BTS-Verzeichnis wechseln
+
+Das ist der Ordner, in dem der Unterordner `bts/` mit `ticker_conn.js` liegt
+(dort liegen auch `package.json` und `update-bts.sh`). Wer nicht weiß, wo er ist:
+
+```sh
+systemctl cat bts | grep WorkingDirectory        # wenn BTS als Dienst „bts“ läuft
+find / -path '*/bts/ticker_conn.js' 2>/dev/null  # sonst suchen; gesucht ist der Ordner über bts/
+```
+
+Beispiel: `find` liefert `/root/bts/bts/ticker_conn.js` → das BTS-Verzeichnis ist `/root/bts`:
+
+```sh
+cd /root/bts
+```
+
+### 3. Erweiterung einspielen
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/bts-patch/apply.sh | bash
 ```
 
-Das Skript
+(Fehlt `curl`: `apt-get install -y curl`.) Das Skript
 
 1. prüft, dass es ein BTS-git-Verzeichnis ohne offene Änderungen ist,
 2. fügt die Erweiterung ein und prüft, dass das Ergebnis gültiges JavaScript ist,
@@ -45,8 +88,11 @@ Das Skript
 
 Mehrfaches Ausführen schadet nicht („bereits eingespielt“).
 
-Danach verbindet sich BTS neu mit dem Liveticker; beim nächsten Punkt erscheinen
-Punkt und Unterstreichung.
+### 4. Prüfen
+
+BTS verbindet sich nach dem Neustart von selbst wieder mit dem Liveticker. Sobald ein Spiel
+auf einem Court liegt, zeigt `http://<Liveticker>/admin` bei **Aufschlaganzeige**
+„aktiv“, und beim nächsten Punkt erscheinen Punkt und Unterstreichung.
 
 ## Was passiert bei BTS-Updates?
 

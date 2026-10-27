@@ -43,3 +43,23 @@ test('Alle Farbvorschläge sind mit weißer Schrift gut lesbar', () => {
     assert.ok(branding.contrastWithWhite(branding.parseHex(p.color)) >= 4.5, p.name);
   }
 });
+
+test('Logo-Upload: Typ am Inhalt erkennen, ersetzen, entfernen', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'logo-'));
+  const png = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
+  assert.strictEqual(branding.saveLogo(dir, png), 'png');
+  let b = branding.load({}, dir);
+  assert.ok(b.logoUploaded);
+  assert.match(b.logoUrl, /^\/brand-logo\.png\?v=/);
+  assert.strictEqual(branding.saveLogo(dir, Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>')), 'svg');
+  assert.deepStrictEqual(fs.readdirSync(dir), ['logo.svg'], 'altes Logo ersetzt');
+  assert.throws(() => branding.saveLogo(dir, Buffer.from('<html><script>alert(1)</script>')), /Nur PNG/);
+  assert.throws(() => branding.saveLogo(dir, Buffer.alloc(branding.MAX_LOGO + 1, 0x89)), /zu groß/);
+  branding.removeLogo(dir);
+  b = branding.load({}, dir);
+  assert.strictEqual(b.logoUrl, '/shuttle.svg');
+  assert.strictEqual(b.logoUploaded, false);
+});

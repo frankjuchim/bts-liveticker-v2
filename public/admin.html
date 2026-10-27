@@ -42,6 +42,13 @@
   .pv-row span { padding: 6px 14px; }
   .pv-row b { background: #fff; width: 44px; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; }
   .warn { color: var(--live); margin-top: 8px; }
+  pre.cmd { background: var(--bg); padding: 8px 10px; border-radius: 6px; white-space: pre-wrap; word-break: break-all; font-size: 0.85rem; margin: 8px 0; user-select: all; }
+  .logo-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .logo-box { width: 72px; height: 72px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .logo-box img { max-width: 60px; max-height: 60px; object-fit: contain; }
+  .logo-row button { font: inherit; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
+  .pv-brand { display: flex; align-items: center; gap: 10px; }
+  .pv-brand img { height: 36px; max-width: 80px; object-fit: contain; }
   .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; align-items: center; }
   .actions button.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
 </style>
@@ -49,7 +56,7 @@
 <body>
 <main class="wrap">
   <div class="brand">
-    <img src="{{LOGO}}" alt="">
+    <img src="{{LOGO}}" alt="" data-brand-logo>
     <div><b data-brand="title">{{TITLE}}</b><span><span data-brand="subtitle">{{SUBTITLE}}</span> · Status</span></div>
   </div>
   <section class="panel">
@@ -59,14 +66,21 @@
       <dt>Letzte Daten</dt><dd id="lastMsg">–</dd>
       <dt>Courts</dt><dd id="courtCount">–</dd>
       <dt>Spiele</dt><dd id="matchCount">–</dd>
+      <dt>Aufschlaganzeige</dt><dd id="extState">–</dd>
       <dt>Adresse für BTS</dt><dd><code id="wsUrl"></code></dd>
     </dl>
   </section>
 
   <h2>Einrichtung in BTS</h2>
   <section class="panel">
-    Turnier bearbeiten → <b>Ticker</b> aktivieren → Ticker-Adresse <code class="wsUrl"></code>
-    und Ticker-Passwort (= <code>TICKER_PASSWORD</code> aus <code>/etc/bts-liveticker.env</code>) eintragen.
+    <p style="margin-top:0"><b>1. Verbindung</b> – in der BTS-Oberfläche: Turnier bearbeiten → <b>Ticker</b> aktivieren →
+      Ticker-Adresse <code class="wsUrl"></code> und Ticker-Passwort
+      (= <code>TICKER_PASSWORD</code> aus <code>/etc/bts-liveticker.env</code> dieses Containers) eintragen.</p>
+    <p style="margin-bottom:0"><b>2. Optional: Aufschläger/Rückschläger</b> – dafür braucht BTS eine kleine Erweiterung.
+      Sie wird <b>auf dem Rechner/Container eingespielt, auf dem BTS läuft</b> (nicht hier im Liveticker):
+      dort im BTS-Verzeichnis ausführen:</p>
+    <pre class="cmd">curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/bts-patch/apply.sh | bash</pre>
+    <p style="margin-bottom:0"><a href="https://github.com/frankjuchim/bts-liveticker-v2/blob/main/docs/BTS-UPGRADE.md" target="_blank" rel="noopener">Ausführliche Anleitung</a></p>
   </section>
 
   <h2>Seiten &amp; Overlays</h2>
@@ -83,6 +97,15 @@
         <label for="bSubtitle">Untertitel</label>
         <input type="text" id="bSubtitle" maxlength="80" placeholder="z. B. Turnier-Liveticker">
       </div>
+      <h3 style="font-size:0.95rem;margin:18px 0 8px">Logo</h3>
+      <div class="logo-row">
+        <div class="logo-box" id="logoBox"><img id="logoImg" alt="Aktuelles Logo"></div>
+        <input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>
+        <button type="button" id="logoPick">Logo hochladen …</button>
+        <button type="button" id="logoRemove" hidden>Logo entfernen</button>
+        <span class="muted">PNG, JPG, WebP oder SVG, max. 2 MB – am besten mit transparentem Hintergrund</span>
+      </div>
+
       <h3 style="font-size:0.95rem;margin:18px 0 8px">Farbe</h3>
       <div class="swatches" id="swatches"></div>
       <div class="custom-color">
@@ -93,7 +116,7 @@
       <div class="warn" id="contrastWarn" hidden>Diese Farbe ist sehr hell – weiße Schrift darauf ist schlecht lesbar.</div>
 
       <div class="preview" id="preview" aria-label="Vorschau">
-        <div class="pv-brand"><b id="pvTitle"></b><span id="pvSubtitle"></span></div>
+        <div class="pv-brand"><img id="pvLogo" alt=""><div><b id="pvTitle"></b><span id="pvSubtitle"></span></div></div>
         <div class="pv-head" id="pvHead">Court 1 · HE O19 · Live</div>
         <div class="pv-row"><span>● M. Mustermann</span><b class="pv-pts">11</b></div>
         <div class="pv-row"><span>T. Test</span><b class="pv-pts">9</b></div>
@@ -152,6 +175,10 @@
     st.className = b && b.connected ? 'ok' : 'bad';
     document.getElementById('tName').textContent = (state && state.tournament.name) || '–';
     document.getElementById('lastMsg').textContent = fmt(b && b.lastMessageAt);
+    var ext = document.getElementById('extState');
+    if (state && state.btsExtension === true) { ext.textContent = 'aktiv (BTS-Erweiterung erkannt)'; ext.className = 'ok'; }
+    else if (state && state.btsExtension === false) { ext.textContent = 'nicht aktiv – BTS-Erweiterung fehlt (siehe „Einrichtung in BTS“, Schritt 2)'; ext.className = 'bad'; }
+    else { ext.textContent = 'noch nicht erkennbar – sobald ein Spiel auf einem Court liegt'; ext.className = 'muted'; }
     var courts = (state && state.courts) || [];
     var all = (state && state.matches) || [];
     document.getElementById('courtCount').textContent = courts.length + ' (' + courts.filter(function (c) { return c.match; }).length + ' belegt)';
@@ -216,6 +243,7 @@
     document.getElementById('pvHead').style.background = darker(accent);
     document.querySelectorAll('.pv-pts').forEach(function (b) { b.style.color = accent; });
     document.getElementById('contrastWarn').hidden = contrast(accent) >= 3;
+    document.getElementById('logoBox').style.background = accent;
   }
 
   function fill(b) {
@@ -236,6 +264,9 @@
       btn.addEventListener('click', function () { setAccent(p.color); });
       sw.appendChild(btn);
     });
+    document.getElementById('logoImg').src = b.logoUrl;
+    document.getElementById('pvLogo').src = b.logoUrl;
+    document.getElementById('logoRemove').hidden = !b.logoUploaded;
     setAccent(b.accent);
   }
 
@@ -252,18 +283,25 @@
   bTitle.addEventListener('input', preview);
   bSubtitle.addEventListener('input', preview);
 
-  function saveBrand(payload) {
+  function saveBrand(payload, url, okText) {
     var msg = document.getElementById('brandMsg');
     payload.password = document.getElementById('bPw').value;
-    if (!payload.password) { msg.textContent = 'Bitte das Ticker-Passwort eingeben.'; msg.className = 'bad'; return; }
-    fetch('/api/brand', {
+    if (!payload.password) {
+      msg.textContent = 'Bitte unten das Ticker-Passwort eingeben.';
+      msg.className = 'bad';
+      document.getElementById('bPw').focus();
+      return;
+    }
+    msg.textContent = 'Speichere …';
+    msg.className = 'muted';
+    fetch(url || '/api/brand', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     }).then(function (r) {
       return r.json().then(function (d) { return { ok: r.ok, d: d }; });
     }).then(function (x) {
-      if (x.ok) { fill(x.d); msg.textContent = 'Gespeichert.'; msg.className = 'ok'; }
+      if (x.ok) { fill(x.d); msg.textContent = okText || 'Gespeichert.'; msg.className = 'ok'; }
       else { msg.textContent = x.d.error || 'Fehler'; msg.className = 'bad'; }
     }).catch(function () {
       msg.textContent = 'Fehler beim Senden.';
@@ -275,6 +313,22 @@
     e.preventDefault();
     saveBrand({ title: bTitle.value, subtitle: bSubtitle.value, accent: accent });
   });
+  var logoFile = document.getElementById('logoFile');
+  document.getElementById('logoPick').addEventListener('click', function () { logoFile.click(); });
+  logoFile.addEventListener('change', function () {
+    var f = logoFile.files[0];
+    logoFile.value = '';
+    if (!f) return;
+    var msg = document.getElementById('brandMsg');
+    if (f.size > 2 * 1024 * 1024) { msg.textContent = 'Logo ist zu groß (max. 2 MB).'; msg.className = 'bad'; return; }
+    var reader = new FileReader();
+    reader.onload = function () { saveBrand({ data: reader.result }, '/api/logo', 'Logo gespeichert.'); };
+    reader.readAsDataURL(f);
+  });
+  document.getElementById('logoRemove').addEventListener('click', function () {
+    if (confirm('Logo entfernen?')) saveBrand({ remove: true }, '/api/logo', 'Logo entfernt.');
+  });
+
   document.getElementById('bDefault').addEventListener('click', function () {
     if (confirm('Titel, Untertitel und Farbe auf die Standardwerte zurücksetzen?')) saveBrand({ reset: true });
   });

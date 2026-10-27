@@ -6,8 +6,8 @@
 - Liveticker für Zuschauer: alle Courts mit Spielstand, Ergebnisliste, Suche nach Spieler/Disziplin
 - Transparente Overlays für den Stream, einzeln pro Court oder mehrere Courts auf einmal
 - Aufschläger (Punkt) und im Doppel Rückschläger (unterstrichen) – mit einer kleinen
-  [BTS-Erweiterung](docs/BTS-UPGRADE.md)
-- Eigener Titel, eigene Farbe und eigenes Logo; Turniername und Turnierlogo kommen aus BTS
+  [BTS-Erweiterung](docs/BTS-UPGRADE.md), die **auf der BTS-Maschine** eingespielt wird
+- Titel, Farbe und Logo im Admin-Panel einstellbar; Turniername und Turnierlogo kommen aus BTS
 - Keine Datenbank, keine Cloud: Node.js + eine JSON-Datei
 
 ```
@@ -69,11 +69,13 @@ Konfiguration und gespeicherte Ergebnisse bleiben erhalten.
 
 ## Erscheinungsbild im Admin-Panel
 
-Unter `http://<IP>/admin` → **Erscheinungsbild** lassen sich Titel, Untertitel und Farbe
-ändern – aus zehn vorgegebenen Farben oder frei per Farbwähler/Hex-Wert, mit Vorschau.
+Unter `http://<IP>/admin` → **Erscheinungsbild** lassen sich Titel, Untertitel, Logo und Farbe
+ändern – Farbe aus zehn Vorgaben oder frei per Farbwähler/Hex-Wert, mit Vorschau. Logo:
+PNG, JPG, WebP oder SVG bis 2 MB (am besten mit transparentem Hintergrund).
 Gespeichert wird mit dem Ticker-Passwort; offene Ticker-Seiten und OBS-Overlays übernehmen
 die Änderung sofort, ohne Neuladen. „Auf Standard zurücksetzen“ nimmt wieder die Werte
-aus der Konfigurationsdatei. (Gespeichert in `/var/lib/bts-liveticker/settings.json`.)
+aus der Konfigurationsdatei. (Gespeichert in `/var/lib/bts-liveticker/settings.json`
+bzw. `logo.*` im selben Ordner.)
 
 ## Konfiguration
 
@@ -91,9 +93,7 @@ haben Vorrang:
 | `LOGO_FILE` | – | Pfad zu einem eigenen Logo |
 | `DATA_DIR` | `/var/lib/bts-liveticker` | gespeicherter Stand |
 
-Eigenes Logo: einfach als `/var/lib/bts-liveticker/logo.png` (oder `.svg`, `.jpg`, `.webp`) ablegen
-und den Dienst neu starten – ohne Logo erscheint ein Federball-Symbol.
-Vom Proxmox-Host aus: `pct push <CTID> logo.png /var/lib/bts-liveticker/logo.png`.
+Logo: am einfachsten im Admin-Panel hochladen. Ohne Logo erscheint ein Federball-Symbol.
 
 Log ansehen: `journalctl -u bts-liveticker -f`
 
@@ -106,6 +106,19 @@ In BTS: Turnier bearbeiten → **Ticker** aktivieren →
 - **Ticker-Passwort:** `TICKER_PASSWORD` aus der Konfiguration
 
 Auf `http://<IP>/admin` steht danach „verbunden“. Dort gibt es auch alle Overlay-Links.
+
+### Aufschläger/Rückschläger (optional)
+
+Dafür braucht **BTS** eine kleine Erweiterung. Sie wird **nicht hier im Liveticker-Container**
+eingespielt, sondern **auf der Maschine, auf der BTS läuft** – dort im BTS-Verzeichnis:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/bts-patch/apply.sh | bash
+```
+
+Schritt für Schritt (wie man auf die BTS-Maschine kommt, wo das BTS-Verzeichnis liegt, was
+bei BTS-Updates passiert): **[docs/BTS-UPGRADE.md](docs/BTS-UPGRADE.md)**.
+`/admin` zeigt unter „Aufschlaganzeige“, ob die Erweiterung aktiv ist.
 
 ## Von außen erreichbar machen
 

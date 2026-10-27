@@ -286,6 +286,9 @@ function serveBrandLogo(req, res) {
     if (err) return send(res, 404, 'Not found', 'text/plain');
     send(res, 200, buf, MIME[path.extname(BRAND.logoFile).toLowerCase()] || 'application/octet-stream', {
       'Cache-Control': 'no-cache',
+      // hochgeladene SVGs dürfen keine Skripte ausführen, auch nicht bei direktem Aufruf
+      'Content-Security-Policy': "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
+      'X-Content-Type-Options': 'nosniff',
     });
   });
 }
@@ -308,14 +311,16 @@ function servePatch(req, res, name) {
   });
 }
 
-function readBody(req, cb) {
+// Liest den Request-Body; bei mehr als max Bytes wird null übergeben
+function readBody(req, cb, max) {
+  max = max || 64 * 1024;
   const chunks = [];
   let size = 0;
   req.on('data', (c) => {
     size += c.length;
-    if (size < 64 * 1024) chunks.push(c);
+    if (size <= max) chunks.push(c);
   });
-  req.on('end', () => cb(Buffer.concat(chunks).toString('utf8')));
+  req.on('end', () => cb(size > max ? null : Buffer.concat(chunks).toString('utf8')));
 }
 
 function brandInfo() {
@@ -325,11 +330,44 @@ function brandInfo() {
     subtitle: BRAND.subtitle,
     accent: BRAND.accent,
     logoUrl: BRAND.logoUrl,
+    logoUploaded: BRAND.logoUploaded,
     version: brandVersion,
     custom: settings,
     defaults: { title: defaults.title, subtitle: defaults.subtitle, accent: defaults.accent },
     presets: branding.PRESETS,
   };
+}
+
+// Erscheinungsbild neu laden und offenen Seiten mitteilen
+function brandChanged() {
+  BRAND = branding.load(process.env, DATA_DIR, settings);
+  brandVersion = Date.now().toString(36);
+  const info = JSON.stringify(brandInfo());
+  sendAll('brand', info);
+  return info;
+}
+
+// Logo hochladen ({ password, data: Base64 }) oder entfernen ({ password, remove: true })
+function handleLogo(req, res) {
+  readBody(req, (body) => {
+    if (body == null) return send(res, 413, '{"error":"Logo ist zu groß (max. 2 MB)"}');
+    let input = {};
+    try { input = JSON.parse(body) || {}; } catch (e) { /* leer */ }
+    if (!passwordOk(input.password)) return send(res, 401, '{"error":"Falsches Passwort"}');
+    try {
+      if (input.remove) {
+        branding.removeLogo(DATA_DIR);
+        console.log('Logo entfernt');
+      } else {
+        const b64 = String(input.data || '').replace(/^data:[^,]*,/, '');
+        const ext = branding.saveLogo(DATA_DIR, Buffer.from(b64, 'base64'));
+        console.log('Logo hochgeladen:', ext);
+      }
+    } catch (e) {
+      return send(res, 400, JSON.stringify({ error: e.message }));
+    }
+    send(res, 200, brandChanged());
+  }, Math.ceil(branding.MAX_LOGO * 1.4) + 4096);
 }
 
 // Titel/Untertitel/Farbe aus dem Admin-Panel speichern ({ reset: true } = Standard)
@@ -348,12 +386,8 @@ function handleBrand(req, res) {
       fs.writeFile(SETTINGS_FILE, JSON.stringify(next, null, 2), (err) => {
         if (err) return send(res, 500, JSON.stringify({ error: 'Speichern fehlgeschlagen: ' + err.message }));
         settings = next;
-        BRAND = branding.load(process.env, DATA_DIR, settings);
-        brandVersion = Date.now().toString(36);
-        const info = JSON.stringify(brandInfo());
-        sendAll('brand', info);
         console.log('Erscheinungsbild geändert:', JSON.stringify(settings));
-        send(res, 200, info);
+        send(res, 200, brandChanged());
       });
     });
   });
@@ -378,6 +412,7 @@ const server = http.createServer((req, res) => {
   const { pathname } = new URL(req.url, 'http://x');
   if (req.method === 'POST' && pathname === '/api/reset') return handleReset(req, res);
   if (req.method === 'POST' && pathname === '/api/brand') return handleBrand(req, res);
+  if (req.method === 'POST' && pathname === '/api/logo') return handleLogo(req, res);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, '{"error":"method"}');
   if (pathname === '/api/state') return send(res, 200, stateJson);
   if (pathname === '/api/brand') return send(res, 200, JSON.stringify(brandInfo()));

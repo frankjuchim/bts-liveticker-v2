@@ -46,6 +46,12 @@
   function applyBrand(b) {
     var link = document.querySelector('link[href^="/config.css"]');
     if (link) link.href = '/config.css?v=' + encodeURIComponent(b.version);
+    if (b.logoUrl) {
+      document.querySelectorAll('img[data-brand-logo], link[rel="icon"]').forEach(function (n) {
+        if (n.tagName === 'LINK') n.href = b.logoUrl;
+        else n.src = b.logoUrl;
+      });
+    }
     document.querySelectorAll('[data-brand]').forEach(function (n) {
       var v = b[n.getAttribute('data-brand')];
       if (v != null) n.textContent = v;
