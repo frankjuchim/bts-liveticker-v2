@@ -26,7 +26,7 @@
   #resetMsg, #brandMsg { margin-top: 8px; }
   .fields { display: grid; grid-template-columns: max-content 1fr; gap: 10px 14px; align-items: center; }
   .fields label { color: var(--muted); }
-  .fields input[type=text] { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); width: 100%; max-width: 420px; }
+  .fields input[type=text], .fields input[type=password] { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); width: 100%; max-width: 420px; }
   .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
   .swatch { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; padding: 0; box-shadow: 0 0 0 1px var(--line); }
   .swatch.on { border-color: var(--card); box-shadow: 0 0 0 2px var(--text); }
@@ -91,11 +91,22 @@
   <h2>Erscheinungsbild</h2>
   <section class="panel">
     <form id="brand">
+      <p class="muted" style="margin-top:0">Änderungen werden erst mit <b>Speichern</b> übernommen (ein neues Logo sofort beim
+        Hochladen). Dafür wird das Ticker-Passwort gebraucht – <code>TICKER_PASSWORD</code> in
+        <code>/etc/bts-liveticker.env</code>, wird auch am Ende der Installation angezeigt.</p>
       <div class="fields">
+        <label for="bPw">Ticker-Passwort</label>
+        <input type="password" id="bPw" placeholder="zum Speichern nötig" autocomplete="current-password" style="max-width:260px">
         <label for="bTitle">Titel</label>
         <input type="text" id="bTitle" maxlength="80" placeholder="z. B. Vereinsname">
         <label for="bSubtitle">Untertitel</label>
         <input type="text" id="bSubtitle" maxlength="80" placeholder="z. B. Turnier-Liveticker">
+        <label for="bLink">Link zu allen Spielen</label>
+        <input type="text" id="bLink" maxlength="500" inputmode="url" placeholder="https://dbv.turnier.de/tournament/…/matches">
+        <span></span>
+        <label class="toggle" style="color:var(--text)"><input type="checkbox" id="bHideLink"> Link im Ticker ausblenden</label>
+        <span></span>
+        <span class="muted" id="bLinkHint" style="font-size:0.85rem"></span>
       </div>
       <h3 style="font-size:0.95rem;margin:18px 0 8px">Logo</h3>
       <div class="logo-row">
@@ -123,9 +134,9 @@
       </div>
 
       <div class="actions">
-        <input type="password" id="bPw" placeholder="Ticker-Passwort" autocomplete="current-password" required>
         <button type="submit">Speichern</button>
         <button type="button" class="secondary" id="bDefault">Auf Standard zurücksetzen</button>
+        <span class="bad" id="bDirty" hidden>Nicht gespeicherte Änderungen</span>
       </div>
       <p class="muted" style="margin-bottom:0">Gilt sofort für Ticker und Overlays – offene Seiten übernehmen es ohne Neuladen.
         Standardwerte kommen aus <code>/etc/bts-liveticker.env</code>.</p>
@@ -206,8 +217,28 @@
   var bSubtitle = document.getElementById('bSubtitle');
   var bColor = document.getElementById('bColor');
   var bHex = document.getElementById('bHex');
+  var bLink = document.getElementById('bLink');
+  var bHideLink = document.getElementById('bHideLink');
   var accent = '#1f5f99';
   var brand = null;
+
+  function linkState() { bLink.disabled = bHideLink.checked; }
+  bHideLink.addEventListener('change', linkState);
+
+  // Zeigt an, ob es Änderungen gibt, die noch nicht gespeichert sind
+  function dirty() {
+    if (!brand) return;
+    var c = brand.custom;
+    var changed = bTitle.value.trim() !== (c.title || '') ||
+      bSubtitle.value.trim() !== (c.subtitle || '') ||
+      bLink.value.trim() !== (c.link || '') ||
+      bHideLink.checked !== !!c.hideLink ||
+      accent !== brand.accent;
+    document.getElementById('bDirty').hidden = !changed;
+  }
+  document.getElementById('brand').addEventListener('input', function () { setTimeout(dirty); });
+  document.getElementById('brand').addEventListener('change', function () { setTimeout(dirty); });
+  document.getElementById('brand').addEventListener('click', function () { setTimeout(dirty); });
 
   function validHex(v) { return /^#[0-9a-f]{6}$/i.test(v); }
 
@@ -252,6 +283,13 @@
     bSubtitle.placeholder = b.defaults.subtitle;
     bTitle.value = b.custom.title || '';
     bSubtitle.value = b.custom.subtitle || '';
+    bLink.value = b.custom.link || '';
+    bHideLink.checked = !!b.custom.hideLink;
+    document.getElementById('bLinkHint').textContent = b.btsLink
+      ? 'Leer lassen = Link von BTS: ' + b.btsLink
+      : 'Leer lassen = Link von BTS (noch keiner empfangen)';
+    linkState();
+    setTimeout(dirty);
     var sw = document.getElementById('swatches');
     sw.replaceChildren();
     b.presets.forEach(function (p) {
@@ -287,7 +325,7 @@
     var msg = document.getElementById('brandMsg');
     payload.password = document.getElementById('bPw').value;
     if (!payload.password) {
-      msg.textContent = 'Bitte unten das Ticker-Passwort eingeben.';
+      msg.textContent = 'Bitte oben das Ticker-Passwort eingeben.';
       msg.className = 'bad';
       document.getElementById('bPw').focus();
       return;
@@ -311,7 +349,7 @@
 
   document.getElementById('brand').addEventListener('submit', function (e) {
     e.preventDefault();
-    saveBrand({ title: bTitle.value, subtitle: bSubtitle.value, accent: accent });
+    saveBrand({ title: bTitle.value, subtitle: bSubtitle.value, accent: accent, link: bLink.value, hideLink: bHideLink.checked });
   });
   var logoFile = document.getElementById('logoFile');
   document.getElementById('logoPick').addEventListener('click', function () { logoFile.click(); });
@@ -330,7 +368,7 @@
   });
 
   document.getElementById('bDefault').addEventListener('click', function () {
-    if (confirm('Titel, Untertitel und Farbe auf die Standardwerte zurücksetzen?')) saveBrand({ reset: true });
+    if (confirm('Titel, Untertitel, Farbe und Link auf die Standardwerte zurücksetzen?')) saveBrand({ reset: true });
   });
 
   // ---- Ergebnisse zurücksetzen

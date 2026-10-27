@@ -63,3 +63,12 @@ test('Logo-Upload: Typ am Inhalt erkennen, ersetzen, entfernen', () => {
   assert.strictEqual(b.logoUrl, '/shuttle.svg');
   assert.strictEqual(b.logoUploaded, false);
 });
+
+test('Link-Einstellung: nur http(s)-Adressen, ausblenden möglich', () => {
+  assert.deepStrictEqual(
+    branding.cleanSettings({ link: ' https://dbv.turnier.de/tournament/ABC/matches ', hideLink: false }),
+    { link: 'https://dbv.turnier.de/tournament/ABC/matches' });
+  assert.deepStrictEqual(branding.cleanSettings({ hideLink: true }), { hideLink: true });
+  assert.throws(() => branding.cleanSettings({ link: 'javascript:alert(1)' }));
+  assert.throws(() => branding.cleanSettings({ link: 'dbv.turnier.de' }));
+});

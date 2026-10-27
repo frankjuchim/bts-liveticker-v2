@@ -68,15 +68,29 @@ bash /opt/bts-liveticker/deploy/update.sh
 
 Konfiguration und gespeicherte Ergebnisse bleiben erhalten.
 
-## Erscheinungsbild im Admin-Panel
+## Erscheinungsbild und Link im Admin-Panel
 
-Unter `http://<IP>/admin` → **Erscheinungsbild** lassen sich Titel, Untertitel, Logo und Farbe
-ändern – Farbe aus zehn Vorgaben oder frei per Farbwähler/Hex-Wert, mit Vorschau. Logo:
-PNG, JPG, WebP oder SVG bis 2 MB (am besten mit transparentem Hintergrund).
-Gespeichert wird mit dem Ticker-Passwort; offene Ticker-Seiten und OBS-Overlays übernehmen
-die Änderung sofort, ohne Neuladen. „Auf Standard zurücksetzen“ nimmt wieder die Werte
-aus der Konfigurationsdatei. (Gespeichert in `/var/lib/bts-liveticker/settings.json`
-bzw. `logo.*` im selben Ordner.)
+Unter `http://<IP>/admin` → **Erscheinungsbild**:
+
+1. **Ticker-Passwort** oben eintragen (nötig zum Speichern).
+2. Titel, Untertitel, **Link zu allen Spielen** und **Farbe** ändern – Farbe aus zehn Vorgaben
+   oder frei per Farbwähler/Hex-Wert, mit Vorschau.
+3. **Speichern** klicken. Solange etwas nicht gespeichert ist, steht dort
+   „Nicht gespeicherte Änderungen“.
+
+Ein **Logo** wird sofort beim Hochladen gespeichert (PNG, JPG, WebP oder SVG bis 2 MB, am besten
+mit transparentem Hintergrund). Offene Ticker-Seiten und OBS-Overlays übernehmen alles sofort,
+ohne Neuladen. „Auf Standard zurücksetzen“ nimmt wieder die Werte aus der Konfigurationsdatei
+bzw. den Link von BTS. Gespeichert wird in `/var/lib/bts-liveticker/settings.json` und `logo.*` –
+das bleibt auch bei Neustarts und Updates erhalten.
+
+**Link zu allen Spielen:** BTS schickt einen Link zu turnier.de mit, aber nur korrekt, wenn in
+BTS die „Turnier Guid“ eingetragen ist – und immer mit `www.turnier.de`. Liegt das Turnier z. B.
+auf `dbv.turnier.de`, einfach die Adresse der Turnierseite ins Feld kopieren
+(z. B. `https://dbv.turnier.de/tournament/<GUID>/matches`) oder den Link ausblenden.
+
+**Passwort vergessen?** Auf dem Proxmox-Host:
+`pct exec <CTID> -- grep TICKER_PASSWORD /etc/bts-liveticker.env`
 
 ## Konfiguration
 
@@ -151,7 +165,7 @@ zusehen, braucht es eine öffentliche Adresse mit HTTPS, z. B.:
 | `/` | Liveticker für Zuschauer |
 | `/court/<nr>` | Overlay für einen Court (transparenter Hintergrund) |
 | `/courts` | Overlay mehrerer Courts (Standard: alle belegten untereinander) |
-| `/admin` | Verbindungsstatus, Overlay-Links, Erscheinungsbild, Ergebnisse zurücksetzen |
+| `/admin` | Verbindungsstatus, Overlay-Links, Erscheinungsbild/Logo/Link, Ergebnisse zurücksetzen |
 | `/api/state` | Aktueller Stand als JSON |
 
 ### Parameter für die Overlays

@@ -53,7 +53,11 @@ function btsInfo() {
 }
 
 function rebuild() {
-  stateJson = JSON.stringify(store.view(data, { bts: btsInfo() }));
+  const v = store.view(data, { bts: btsInfo() });
+  // Link aus dem Admin-Panel geht vor den Link von BTS
+  if (settings.hideLink) v.tournament.url = '';
+  else if (settings.link) v.tournament.url = settings.link;
+  stateJson = JSON.stringify(v);
 }
 
 function loadState() {
@@ -333,6 +337,7 @@ function brandInfo() {
     logoUploaded: BRAND.logoUploaded,
     version: brandVersion,
     custom: settings,
+    btsLink: data.tournament.url || '',
     defaults: { title: defaults.title, subtitle: defaults.subtitle, accent: defaults.accent },
     presets: branding.PRESETS,
   };
@@ -344,6 +349,9 @@ function brandChanged() {
   brandVersion = Date.now().toString(36);
   const info = JSON.stringify(brandInfo());
   sendAll('brand', info);
+  // Link steckt im Stand – neu verschicken
+  rebuild();
+  sendAll('state', stateJson);
   return info;
 }
 

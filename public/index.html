@@ -161,7 +161,12 @@
     } else logo.hidden = true;
     var link = document.getElementById('tLink');
     link.hidden = !t.url;
-    if (t.url) link.href = t.url;
+    if (t.url) {
+      link.href = t.url;
+      var host = '';
+      try { host = new URL(t.url).hostname.replace(/^www\./, ''); } catch (e) { /* egal */ }
+      link.textContent = 'Alle Spiele auf ' + (host || 'turnier.de') + ' ›';
+    }
 
     var all = (state && state.matches) || [];
     var live = all.filter(function (m) { return m.status === 'live'; }).length;
