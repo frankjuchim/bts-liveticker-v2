@@ -82,3 +82,4 @@ echo "==> Installiere den Liveticker im Container"
 pct exec "$CTID" -- bash -c "apt-get update -qq && apt-get install -y -qq curl ca-certificates >/dev/null && curl -fsSL '$INSTALL_URL' | bash"
 
 echo "==> Fertig. Container $CTID startet automatisch mit dem Host."
+echo "    Update später (hier auf dem Host): pct exec $CTID -- bash /opt/bts-liveticker/deploy/update.sh"

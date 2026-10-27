@@ -358,7 +358,7 @@ function brandChanged() {
 // Logo hochladen ({ password, data: Base64 }) oder entfernen ({ password, remove: true })
 function handleLogo(req, res) {
   readBody(req, (body) => {
-    if (body == null) return send(res, 413, '{"error":"Logo ist zu groß (max. 2 MB)"}');
+    if (body == null) return send(res, 413, '{"error":"Logo ist zu groß (max. 10 MB)"}');
     let input = {};
     try { input = JSON.parse(body) || {}; } catch (e) { /* leer */ }
     if (!passwordOk(input.password)) return send(res, 401, '{"error":"Falsches Passwort"}');

@@ -60,13 +60,32 @@ curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/
 
 ### Update
 
-Im Container als root:
+Neue Versionen holt man mit einem Befehl. Konfiguration, Passwort, Logo, Farben und
+gespeicherte Ergebnisse bleiben erhalten; BTS verbindet sich danach von selbst wieder.
+
+**Vom Proxmox-Host aus (empfohlen):** im Web-UI *Datacenter → Knoten → Shell* öffnen und
+
+```sh
+pct exec <CTID> -- bash /opt/bts-liveticker/deploy/update.sh
+```
+
+`<CTID>` ist die Nummer des Containers (im Web-UI links vor dem Namen, z. B. `105 (bts-liveticker)`,
+oder `pct list`).
+
+**Im Container selbst** (z. B. nach `pct enter <CTID>` oder per SSH) als root:
 
 ```sh
 bash /opt/bts-liveticker/deploy/update.sh
 ```
 
-Konfiguration und gespeicherte Ergebnisse bleiben erhalten.
+Hinweis: Das Skript legt den Container ohne root-Passwort an – die *Konsole* des Containers im
+Web-UI fragt nach einem Login. Entweder den Weg über die Host-Shell nehmen oder einmalig ein
+Passwort setzen: `pct enter <CTID>`, dann `passwd`, dann `exit`.
+
+Welche Version läuft? `pct exec <CTID> -- git -C /opt/bts-liveticker log -1 --format='%h %cd %s' --date=short`
+
+Debian-Updates im Container (Sicherheitsupdates) gehen wie üblich:
+`pct exec <CTID> -- bash -c "apt update && apt -y upgrade"`
 
 ## Erscheinungsbild und Link im Admin-Panel
 
@@ -78,8 +97,8 @@ Unter `http://<IP>/admin` → **Erscheinungsbild**:
 3. **Speichern** klicken. Solange etwas nicht gespeichert ist, steht dort
    „Nicht gespeicherte Änderungen“.
 
-Ein **Logo** wird sofort beim Hochladen gespeichert (PNG, JPG, WebP oder SVG bis 2 MB, am besten
-mit transparentem Hintergrund). Offene Ticker-Seiten und OBS-Overlays übernehmen alles sofort,
+Ein **Logo** wird sofort beim Hochladen gespeichert (PNG, JPG, WebP oder SVG bis 10 MB, am besten
+mit transparentem Hintergrund; große Bilder verkleinert der Browser vorher auf Logo-Größe). Offene Ticker-Seiten und OBS-Overlays übernehmen alles sofort,
 ohne Neuladen. „Auf Standard zurücksetzen“ nimmt wieder die Werte aus der Konfigurationsdatei
 bzw. den Link von BTS. Gespeichert wird in `/var/lib/bts-liveticker/settings.json` und `logo.*` –
 das bleibt auch bei Neustarts und Updates erhalten.
@@ -141,7 +160,9 @@ Im Hallen-/Vereinsnetz reicht die IP des Containers. Sollen Zuschauer von unterw
 zusehen, braucht es eine öffentliche Adresse mit HTTPS, z. B.:
 
 - **Reverse-Proxy** (Nginx Proxy Manager, Caddy, Traefik, …) auf den Container, Port 80.
-  Wichtig: **WebSocket-Unterstützung** einschalten (bei Nginx Proxy Manager: „Websockets Support“).
+  Wichtig: **WebSocket-Unterstützung** einschalten (bei Nginx Proxy Manager: „Websockets Support“)
+  und für den Logo-Upload größere Uploads erlauben (Nginx Proxy Manager: unter *Advanced*
+  `client_max_body_size 20m;` eintragen).
   Nginx-Beispiel:
   ```nginx
   location / {
@@ -153,6 +174,7 @@ zusehen, braucht es eine öffentliche Adresse mit HTTPS, z. B.:
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
       proxy_buffering off;          # für die Live-Updates (Server-Sent Events)
       proxy_read_timeout 1h;
+      client_max_body_size 20m;     # Logo-Upload im Admin-Panel
   }
   ```
 - **Cloudflare Tunnel** (ohne Portfreigabe): `cloudflared` im Container installieren und

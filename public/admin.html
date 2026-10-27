@@ -16,14 +16,15 @@
   dd { margin: 0; overflow-wrap: anywhere; }
   code { background: var(--bg); padding: 2px 6px; border-radius: 4px; }
   .ok { color: #1d7a33; font-weight: 700; }
-  .bad { color: var(--live); font-weight: 700; }
+  .bad { color: #c62828; font-weight: 700; }
+  @media (prefers-color-scheme: dark) { .bad { color: #ff6b6b; } }
   ul.links { margin: 0; padding-left: 18px; }
   ul.links li { margin: 4px 0; }
   ul.links a { color: inherit; }
   #reset, .actions { display: flex; gap: 8px; flex-wrap: wrap; }
   #reset input, .actions input { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); }
   #reset button, .actions button { font: inherit; padding: 8px 14px; border: 0; border-radius: 8px; background: var(--club); color: #fff; cursor: pointer; }
-  #resetMsg, #brandMsg { margin-top: 8px; }
+  #resetMsg { margin-top: 8px; }
   .fields { display: grid; grid-template-columns: max-content 1fr; gap: 10px 14px; align-items: center; }
   .fields label { color: var(--muted); }
   .fields input[type=text], .fields input[type=password] { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); width: 100%; max-width: 420px; }
@@ -49,7 +50,10 @@
   .logo-row button { font: inherit; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
   .pv-brand { display: flex; align-items: center; gap: 10px; }
   .pv-brand img { height: 36px; max-width: 80px; object-fit: contain; }
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; align-items: center; }
+  /* Speichern-Leiste bleibt am unteren Rand sichtbar, solange der Bereich im Bild ist */
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px -16px 0; align-items: center;
+    position: sticky; bottom: 0; z-index: 2; background: var(--card); padding: 10px 16px;
+    border-top: 1px solid var(--line); box-shadow: 0 -4px 10px rgba(0,0,0,0.06); }
   .actions button.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
 </style>
 </head>
@@ -114,7 +118,8 @@
         <input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>
         <button type="button" id="logoPick">Logo hochladen …</button>
         <button type="button" id="logoRemove" hidden>Logo entfernen</button>
-        <span class="muted">PNG, JPG, WebP oder SVG, max. 2 MB – am besten mit transparentem Hintergrund</span>
+        <span class="muted">PNG, JPG, WebP oder SVG bis 10 MB – am besten mit transparentem Hintergrund.
+          Wird beim Hochladen sofort gespeichert.</span>
       </div>
 
       <h3 style="font-size:0.95rem;margin:18px 0 8px">Farbe</h3>
@@ -137,11 +142,11 @@
         <button type="submit">Speichern</button>
         <button type="button" class="secondary" id="bDefault">Auf Standard zurücksetzen</button>
         <span class="bad" id="bDirty" hidden>Nicht gespeicherte Änderungen</span>
+        <span id="brandMsg"></span>
       </div>
       <p class="muted" style="margin-bottom:0">Gilt sofort für Ticker und Overlays – offene Seiten übernehmen es ohne Neuladen.
         Standardwerte kommen aus <code>/etc/bts-liveticker.env</code>.</p>
     </form>
-    <div id="brandMsg"></div>
   </section>
 
   <h2>Ergebnisse zurücksetzen</h2>
@@ -321,13 +326,14 @@
   bTitle.addEventListener('input', preview);
   bSubtitle.addEventListener('input', preview);
 
-  function saveBrand(payload, url, okText) {
-    var msg = document.getElementById('brandMsg');
+  function saveBrand(payload, url, okText, msgId) {
+    var msg = document.getElementById(msgId || 'brandMsg');
     payload.password = document.getElementById('bPw').value;
     if (!payload.password) {
       msg.textContent = 'Bitte oben das Ticker-Passwort eingeben.';
       msg.className = 'bad';
       document.getElementById('bPw').focus();
+      document.getElementById('bPw').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       return;
     }
     msg.textContent = 'Speichere …';
@@ -337,7 +343,12 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     }).then(function (r) {
-      return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+      return r.json().catch(function () {
+        // keine JSON-Antwort: kommt meist von einem Reverse-Proxy davor
+        return { error: r.status === 413
+          ? 'Upload zu groß für den Reverse-Proxy (nginx: client_max_body_size erhöhen, siehe README).'
+          : 'Fehler ' + r.status + ' beim Speichern.' };
+      }).then(function (d) { return { ok: r.ok, d: d }; });
     }).then(function (x) {
       if (x.ok) { fill(x.d); msg.textContent = okText || 'Gespeichert.'; msg.className = 'ok'; }
       else { msg.textContent = x.d.error || 'Fehler'; msg.className = 'bad'; }
@@ -353,15 +364,47 @@
   });
   var logoFile = document.getElementById('logoFile');
   document.getElementById('logoPick').addEventListener('click', function () { logoFile.click(); });
+  // Bilder vor dem Hochladen auf Logo-Größe bringen (max. 800 px, WebP bzw. PNG mit
+  // Transparenz): das Logo lädt jeder Zuschauer, und Reverse-Proxies lassen große
+  // Uploads oft nicht durch. SVG bleibt, wie es ist.
+  var MAX_LOGO = 10 * 1024 * 1024;
+  var MAX_PX = 800;
+
+  function prepareLogo(file, cb) {
+    var reader = new FileReader();
+    reader.onerror = function () { cb(new Error('Datei konnte nicht gelesen werden.')); };
+    reader.onload = function () {
+      var dataUrl = reader.result;
+      if (file.type === 'image/svg+xml' || /\.svg$/i.test(file.name)) return cb(null, dataUrl);
+      var img = new Image();
+      img.onerror = function () { cb(new Error('Das ist kein Bild, das der Browser lesen kann (PNG, JPG, WebP oder SVG).')); };
+      img.onload = function () {
+        var scale = Math.min(1, MAX_PX / Math.max(img.naturalWidth, img.naturalHeight));
+        if (scale === 1 && file.size <= 300 * 1024) return cb(null, dataUrl);
+        var c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        // WebP ist deutlich kleiner; Browser ohne WebP-Export liefern PNG
+        cb(null, c.toDataURL('image/webp', 0.92));
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  }
+
   logoFile.addEventListener('change', function () {
     var f = logoFile.files[0];
     logoFile.value = '';
     if (!f) return;
     var msg = document.getElementById('brandMsg');
-    if (f.size > 2 * 1024 * 1024) { msg.textContent = 'Logo ist zu groß (max. 2 MB).'; msg.className = 'bad'; return; }
-    var reader = new FileReader();
-    reader.onload = function () { saveBrand({ data: reader.result }, '/api/logo', 'Logo gespeichert.'); };
-    reader.readAsDataURL(f);
+    if (f.size > MAX_LOGO) { msg.textContent = 'Logo ist zu groß (max. 10 MB).'; msg.className = 'bad'; return; }
+    msg.textContent = 'Lade hoch …';
+    msg.className = 'muted';
+    prepareLogo(f, function (err, data) {
+      if (err) { msg.textContent = err.message; msg.className = 'bad'; return; }
+      saveBrand({ data: data }, '/api/logo', 'Logo gespeichert.');
+    });
   });
   document.getElementById('logoRemove').addEventListener('click', function () {
     if (confirm('Logo entfernen?')) saveBrand({ remove: true }, '/api/logo', 'Logo entfernt.');
