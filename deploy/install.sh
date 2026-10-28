@@ -12,10 +12,13 @@ ENV_FILE=/etc/bts-liveticker.env
 
 [ "$(id -u)" = 0 ] || { echo "Bitte als root ausführen." >&2; exit 1; }
 
-echo "==> Pakete installieren (nodejs, npm, git)"
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq
-apt-get install -y -qq nodejs npm git ca-certificates curl >/dev/null
+# Pakete nur installieren, wenn etwas fehlt (Updates bleiben so schnell und schlank)
+if ! command -v node >/dev/null || ! command -v npm >/dev/null || ! command -v git >/dev/null || ! command -v curl >/dev/null; then
+  echo "==> Pakete installieren (nodejs, npm, git)"
+  apt-get update -qq
+  apt-get install -y -qq nodejs npm git ca-certificates curl >/dev/null
+fi
 
 NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]')
 if [ "$NODE_MAJOR" -lt 18 ]; then
@@ -30,7 +33,13 @@ if [ -d "$APP_DIR/.git" ]; then
 else
   git clone -q --depth 1 -b "$BRANCH" "$REPO" "$APP_DIR"
 fi
-(cd "$APP_DIR" && npm ci --omit=dev --no-audit --no-fund --loglevel=error)
+# Abhängigkeiten nur neu installieren, wenn sich package-lock.json geändert hat
+LOCK_SUM=$(sha256sum "$APP_DIR/package-lock.json" | cut -d' ' -f1)
+if [ ! -d "$APP_DIR/node_modules" ] || [ "$(cat "$APP_DIR/node_modules/.lock-sum" 2>/dev/null)" != "$LOCK_SUM" ]; then
+  echo "==> Abhängigkeiten installieren"
+  (cd "$APP_DIR" && npm ci --omit=dev --no-audit --no-fund --loglevel=error)
+  echo "$LOCK_SUM" > "$APP_DIR/node_modules/.lock-sum"
+fi
 
 echo "==> Benutzer und Datenverzeichnis"
 id btsticker >/dev/null 2>&1 || useradd --system --home "$DATA_DIR" --shell /usr/sbin/nologin btsticker
@@ -66,13 +75,19 @@ systemctl daemon-reload
 systemctl enable -q bts-liveticker
 systemctl restart bts-liveticker
 
-sleep 2
 PORT=$(sed -n 's/^PORT=//p' "$ENV_FILE" | tail -1)
 PORT=${PORT:-80}
-if curl -fsS "http://127.0.0.1:$PORT/healthz" >/dev/null; then
+# Bis zu 30 s warten – auf kleinen Containern braucht der Start manchmal etwas
+OK=""
+for i in $(seq 1 30); do
+  if curl -fsS "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1; then OK=1; break; fi
+  sleep 1
+done
+if [ -n "$OK" ]; then
   echo "==> Läuft."
 else
-  echo "!! Dienst antwortet nicht – Log: journalctl -u bts-liveticker -n 50" >&2
+  echo "!! Dienst antwortet nicht. Letzte Log-Zeilen:" >&2
+  journalctl -u bts-liveticker -n 20 --no-pager >&2 || true
   exit 1
 fi
 

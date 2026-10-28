@@ -247,9 +247,10 @@
 
   function showView() {
     var ok = fieldOk(last);
+    var mode = view === 'field' && ok ? 'field' : 'cards';
     document.querySelectorAll('.viewswitch button').forEach(function (b) {
       var isField = b.dataset.view === 'field';
-      b.classList.toggle('on', (isField && ok ? view : 'cards') === b.dataset.view);
+      b.classList.toggle('on', b.dataset.view === mode);
       if (isField) {
         b.disabled = !ok;
         b.title = ok ? '' : 'Nur verfügbar, wenn BTS die Erweiterung für Aufschläger/Rückschläger hat';
