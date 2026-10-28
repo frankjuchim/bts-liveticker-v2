@@ -38,10 +38,18 @@
   function render(state) {
     last = state;
     var m = BL.courtMatch(state, BL.court(state, nr), linger);
-    var node = m
-      ? Field.render(m, { court: nr, short: p.get('names') !== 'full' })
-      : BL.el('div', 'idle', 'Court ' + nr + ' – gerade kein Spiel');
-    if (stage.firstChild !== node) stage.replaceChildren(node);
+    var node;
+    if (state && state.btsExtension === false) {
+      // ohne BTS-Erweiterung gibt es keine Positionen und keinen Aufschlag
+      node = BL.el('div', 'idle', 'Die Spielfeld-Ansicht ist nur verfügbar, wenn BTS die Erweiterung für Aufschläger/Rückschläger hat.');
+    } else if (m) {
+      node = Field.render(m, { court: nr, short: p.get('names') !== 'full' });
+    } else {
+      node = BL.el('div', 'idle', 'Court ' + nr + ' – gerade kein Spiel');
+    }
+    if (stage.firstChild !== node && !(node.className === 'idle' && stage.firstChild && stage.firstChild.textContent === node.textContent)) {
+      stage.replaceChildren(node);
+    }
   }
   BL.connect(render);
   setInterval(function () { if (last) render(last); }, 15000);

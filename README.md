@@ -258,8 +258,9 @@ Spiel aufgerufen, aber noch ohne Punkte.
 
 Wie die Eingabeansicht in bup: das Feld von oben, die Spieler in ihren Aufschlagfeldern, ein
 Pfeil vom Aufschläger zum Rückschläger (wird bei jedem neuen Ballwechsel neu gezeichnet) und der
-Punktestand am Netz. Braucht die [BTS-Erweiterung](docs/BTS-UPGRADE.md); ohne sie stehen die
-Spieler nur auf ihrer Seite, ohne Pfeil.
+Punktestand am Netz. Braucht die [BTS-Erweiterung](docs/BTS-UPGRADE.md): Solange der Liveticker sie nicht erkennt
+(Anzeige im Admin-Panel unter „Aufschlaganzeige“), ist der Knopf „Spielfeld“ ausgegraut und
+`/feld/<nr>` zeigt einen Hinweis.
 
 Seiten: Heim beginnt im ersten Satz links, nach jedem Satz wird gewechselt, im Entscheidungssatz
 zusätzlich, sobald ein Team 11 Punkte hat (bei Sätzen bis 11: 6). BTS meldet die tatsächliche

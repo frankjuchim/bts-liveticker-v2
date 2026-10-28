@@ -204,3 +204,4 @@ h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: 
 .viewswitch { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .viewswitch button { font: inherit; font-size: 0.9rem; padding: 6px 12px; border: 0; background: var(--card); color: var(--text); cursor: pointer; }
 .viewswitch button.on { background: var(--club); color: #fff; }
+.viewswitch button:disabled { opacity: 0.45; cursor: not-allowed; }

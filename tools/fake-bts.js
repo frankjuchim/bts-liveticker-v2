@@ -3,6 +3,7 @@
 // Simuliert BTS: verbindet sich wie bts/ticker_conn.js mit dem Liveticker und
 // spielt auf mehreren Courts Spiele durch.
 //   node tools/fake-bts.js ws://localhost:8080/ws/update test [courts] [ms pro Punkt]
+// NO_EXT=1 simuliert ein BTS ohne Erweiterung (ohne Aufschlagdaten).
 
 const WebSocket = require('ws');
 
@@ -53,11 +54,13 @@ function finished(m) {
 
 const ws = new WebSocket(url + '?password=' + encodeURIComponent(password));
 const send = (msg) => ws.send(JSON.stringify(msg));
+const NO_EXT = process.env.NO_EXT === '1';
+const plain = (m) => (NO_EXT ? { _id: m._id, n: m.n, p0: m.p0, p1: m.p1, s: m.s, sf: m.sf } : m);
 const pushall = () => send({
   type: 'tset',
   event: {
     courts,
-    matches: courts.filter((c) => c.match_id).map((c) => matches.get(c.match_id)),
+    matches: courts.filter((c) => c.match_id).map((c) => plain(matches.get(c.match_id))),
     tournament_name: 'Muster Open (Test)',
     tournament_url: 'https://www.turnier.de/tournaments/',
   },
@@ -96,5 +99,5 @@ function tick() {
   // das Feld; sonst geht der Aufschlag ohne Positionswechsel zum Gegner.
   if (won === srv) m.pe[srv] = !m.pe[srv];
   else m.ts = won === 0;
-  send({ type: 'tupdate_match', match: { _id: m._id, s: m.s, ts: m.ts, pe: m.pe } });
+  send({ type: 'tupdate_match', match: NO_EXT ? { _id: m._id, s: m.s } : { _id: m._id, s: m.s, ts: m.ts, pe: m.pe } });
 }
