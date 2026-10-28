@@ -26,6 +26,10 @@
   <div class="tools">
     <input type="search" id="q" placeholder="Spieler oder Disziplin suchen …" autocomplete="off">
     <label class="toggle"><input type="checkbox" id="showIdle"> freie Courts zeigen</label>
+    <div class="viewswitch" role="group" aria-label="Ansicht">
+      <button type="button" data-view="cards">Karten</button>
+      <button type="button" data-view="field">Spielfeld</button>
+    </div>
   </div>
 
   <section>
@@ -47,6 +51,7 @@
 </main>
 
 <script src="/live.js"></script>
+<script src="/field.js"></script>
 <script>
 (function () {
   'use strict';
@@ -180,13 +185,23 @@
 
     // Courts
     var now = document.getElementById('now');
-    now.replaceChildren();
+    now.className = view === 'field' ? 'fields-grid' : 'now';
+    var cards = [];
     ((state && state.courts) || []).forEach(function (c) {
       var m = BL.match(state, c.match);
       if (!m && (!showIdle.checked || term)) return;
       if (m && !matches(m, term)) return;
-      now.appendChild(nowCard(state, c));
+      cards.push(m && view === 'field' ? Field.render(m, { court: c.num, short: true }) : nowCard(state, c));
     });
+    // Spielfelder sind zwischengespeichert: nur austauschen, was sich geändert hat
+    // (neu eingehängte Elemente würden ihre Animation wiederholen)
+    cards.forEach(function (n, i) {
+      var cur = now.children[i];
+      if (cur === n) return;
+      if (cur && !n.parentNode) now.replaceChild(n, cur);
+      else now.insertBefore(n, cur || null);
+    });
+    while (now.children.length > cards.length) now.removeChild(now.lastChild);
     document.getElementById('nowEmpty').hidden = now.children.length > 0;
 
     // Ergebnisse: zuletzt beendete zuerst
@@ -219,6 +234,25 @@
   }
 
   function rerender() { if (last) render(last); }
+
+  // Ansicht: Karten oder Spielfeld (wie in bup) – ?view=field oder gemerkt
+  var view = BL.params.get('view') || '';
+  if (!view) { try { view = localStorage.getItem('view') || ''; } catch (e) { /* egal */ } }
+  if (view !== 'field') view = 'cards';
+  function showView() {
+    document.querySelectorAll('.viewswitch button').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.view === view);
+    });
+  }
+  showView();
+  document.querySelectorAll('.viewswitch button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      view = b.dataset.view;
+      try { localStorage.setItem('view', view); } catch (e) { /* egal */ }
+      showView();
+      rerender();
+    });
+  });
   q.addEventListener('input', rerender);
   showIdle.addEventListener('change', function () {
     try { localStorage.setItem('showIdle', showIdle.checked ? '1' : '0'); } catch (e) { /* egal */ }

@@ -228,6 +228,8 @@ zusehen, braucht es eine öffentliche Adresse mit HTTPS, z. B.:
 | `/` | Liveticker für Zuschauer |
 | `/court/<nr>` | Overlay für einen Court (transparenter Hintergrund) |
 | `/courts` | Overlay mehrerer Courts (Standard: alle belegten untereinander) |
+| `/?view=field` | Liveticker in der **Spielfeld-Ansicht** (wie in bup, umschaltbar auf der Seite) |
+| `/feld/<nr>` | Großes Spielfeld eines Courts, z. B. für einen Bildschirm in der Halle |
 | `/admin` | Mit Passwort: Verbindungsstatus, Overlay-Links, Erscheinungsbild/Logo/Link, Ergebnisse zurücksetzen |
 | `/api/state` | Aktueller Stand als JSON |
 
@@ -251,6 +253,17 @@ In OBS: *Quelle hinzufügen → Browser*, URL eintragen, 1920 × 1080.
 Anzeige: Spalten = abgeschlossene Sätze, weißes Feld = Punkte im laufenden Satz,
 ✓ = Sieger, Punkt = Aufschläger, unterstrichen = Rückschläger (Doppel), „Gleich“ =
 Spiel aufgerufen, aber noch ohne Punkte.
+
+### Spielfeld-Ansicht
+
+Wie die Eingabeansicht in bup: das Feld von oben, die Spieler in ihren Aufschlagfeldern, ein
+Pfeil vom Aufschläger zum Rückschläger (wird bei jedem neuen Ballwechsel neu gezeichnet) und der
+Punktestand am Netz. Braucht die [BTS-Erweiterung](docs/BTS-UPGRADE.md); ohne sie stehen die
+Spieler nur auf ihrer Seite, ohne Pfeil.
+
+Seiten: Heim beginnt im ersten Satz links, nach jedem Satz wird gewechselt, im Entscheidungssatz
+zusätzlich, sobald ein Team 11 Punkte hat (bei Sätzen bis 11: 6). BTS meldet die tatsächliche
+Hallenseite nicht – die Ansicht folgt deshalb dieser Regel.
 
 ## Was BTS schickt
 

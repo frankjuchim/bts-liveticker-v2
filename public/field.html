@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spielfeld</title>
+<link rel="stylesheet" href="/ticker.css">
+<link rel="stylesheet" href="/config.css">
+<link rel="icon" href="{{LOGO}}">
+<style>
+  /* Großes Spielfeld für einen Bildschirm oder den Stream */
+  body { background: #10151c; }
+  .wrap { max-width: 1400px; }
+  .field-card { border-radius: 14px; }
+  .field-head { font-size: clamp(0.9rem, 2vw, 1.4rem); padding: 10px 16px; }
+  .field-foot { font-size: clamp(0.9rem, 2vw, 1.3rem); padding: 0 16px 14px; }
+  .idle { color: #fff; text-align: center; padding: 18vh 16px; font-size: clamp(1.1rem, 3vw, 2rem); opacity: 0.8; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div id="stage"></div>
+</main>
+<script src="/live.js"></script>
+<script src="/field.js"></script>
+<script>
+  // /feld/1, /feld/2, … (alternativ ?court=1). ?names=full für volle Vornamen,
+  // ?linger=<min> wie bei den Overlays (Standard 5), ?bg=<farbe> für den Hintergrund.
+  BL.applyCommonParams();
+  var p = BL.params;
+  var nr = p.get('court') || decodeURIComponent(location.pathname.split('/').pop()) || '1';
+  var linger = parseFloat(p.get('linger'));
+  if (!(linger >= 0)) linger = 5;
+  document.title = 'Court ' + nr + ' – Spielfeld';
+  var stage = document.getElementById('stage');
+  var last = null;
+
+  function render(state) {
+    last = state;
+    var m = BL.courtMatch(state, BL.court(state, nr), linger);
+    var node = m
+      ? Field.render(m, { court: nr, short: p.get('names') !== 'full' })
+      : BL.el('div', 'idle', 'Court ' + nr + ' – gerade kein Spiel');
+    if (stage.firstChild !== node) stage.replaceChildren(node);
+  }
+  BL.connect(render);
+  setInterval(function () { if (last) render(last); }, 15000);
+</script>
+</body>
+</html>

@@ -251,8 +251,12 @@
     if (courts.length >= 2) {
       ul.appendChild(link('/courts?layout=split&c=' + courts[0].num + ',' + courts[1].num, 'Overlay: zwei Courts links/rechts'));
     }
+    ul.appendChild(link('/?view=field', 'Liveticker in der Spielfeld-Ansicht'));
     courts.forEach(function (c) {
       ul.appendChild(link('/court/' + encodeURIComponent(c.num), 'Overlay Court ' + c.num));
+    });
+    courts.forEach(function (c) {
+      ul.appendChild(link('/feld/' + encodeURIComponent(c.num), 'Spielfeld Court ' + c.num + ' (großer Bildschirm)'));
     });
   });
 
