@@ -19,6 +19,8 @@
 #               Proxmox-Versionen; 13 braucht ein aktuelles Proxmox)
 #   DISK        Größe Root-FS in GB         (Standard: 4)
 #   MEMORY      RAM in MB                   (Standard: 512)
+#   ROOT_PASSWORD  root-Passwort für die Konsole des Containers
+#               (Standard: wird zufällig erzeugt und am Ende angezeigt)
 set -euo pipefail
 
 CTID="${CTID:-$(pvesh get /cluster/nextid)}"
@@ -30,6 +32,8 @@ IP="${IP:-dhcp}"
 DISK="${DISK:-4}"
 MEMORY="${MEMORY:-512}"
 DEBIAN="${DEBIAN:-12}"
+# root-Passwort für die Konsole im Web-UI (ohne Passwort ginge nur „pct enter“ vom Host)
+ROOT_PASSWORD="${ROOT_PASSWORD:-$(head -c 18 /dev/urandom | base64 | tr -d '/+=' | head -c 16)}"
 INSTALL_URL="${INSTALL_URL:-https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/deploy/install.sh}"
 
 command -v pct >/dev/null || { echo "Dieses Skript läuft auf dem Proxmox-Host (pct nicht gefunden)." >&2; exit 1; }
@@ -63,6 +67,7 @@ if ! pct create "$CTID" "$TEMPLATE_STORAGE:vztmpl/$TEMPLATE" \
   --net0 "$NET" \
   --unprivileged 1 --features nesting=1 \
   --onboot 1 \
+  --password "$ROOT_PASSWORD" \
   --description "BTS Liveticker – https://github.com/frankjuchim/bts-liveticker-v2" >/dev/null; then
   echo "!! Container konnte nicht angelegt werden." >&2
   echo "   Bei „unsupported debian version“: Proxmox aktualisieren (apt update && apt full-upgrade)" >&2
@@ -82,4 +87,6 @@ echo "==> Installiere den Liveticker im Container"
 pct exec "$CTID" -- bash -c "apt-get update -qq && apt-get install -y -qq curl ca-certificates >/dev/null && curl -fsSL '$INSTALL_URL' | bash"
 
 echo "==> Fertig. Container $CTID startet automatisch mit dem Host."
+echo "    Konsole des Containers im Web-UI:  Benutzer root, Passwort $ROOT_PASSWORD"
+echo "    (bitte notieren – ändern im Container mit: passwd)"
 echo "    Update später (hier auf dem Host): pct exec $CTID -- bash /opt/bts-liveticker/deploy/update.sh"

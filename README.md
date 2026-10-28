@@ -48,6 +48,7 @@ CTID=120 IP=192.168.1.50/24 GW=192.168.1.1 STORAGE=local-zfs \
 | `BRIDGE` | `vmbr0` | Netzwerkbrücke |
 | `IP` / `GW` | `dhcp` | z. B. `192.168.1.50/24` und Gateway |
 | `VLAN` | – | VLAN-Tag |
+| `ROOT_PASSWORD` | zufällig | root-Passwort für die Container-Konsole (wird am Ende angezeigt) |
 | `DEBIAN` | `12` | Debian-Version des Containers (`13` nur mit aktuellem Proxmox) |
 | `DISK` / `MEMORY` | `4` / `512` | GB / MB |
 
@@ -78,9 +79,20 @@ oder `pct list`).
 bash /opt/bts-liveticker/deploy/update.sh
 ```
 
-Hinweis: Das Skript legt den Container ohne root-Passwort an – die *Konsole* des Containers im
-Web-UI fragt nach einem Login. Entweder den Weg über die Host-Shell nehmen oder einmalig ein
-Passwort setzen: `pct enter <CTID>`, dann `passwd`, dann `exit`.
+### Root-Login im Container
+
+Die *Konsole* des Containers im Web-UI fragt nach einem Login: Benutzer `root`, das Passwort
+zeigt das Proxmox-Skript am Ende der Installation an (oder vorher selbst festlegen mit
+`ROOT_PASSWORD=…`).
+
+Passwort vergessen, oder Container mit einer älteren Skript-Version angelegt (die noch kein
+Passwort gesetzt hat)? In der Shell des Proxmox-Hosts (*Datacenter → Knoten → Shell*):
+
+```sh
+pct enter <CTID>   # ohne Passwort direkt in den Container
+passwd             # neues root-Passwort setzen
+exit
+```
 
 Welche Version läuft? `pct exec <CTID> -- git -C /opt/bts-liveticker log -1 --format='%h %cd %s' --date=short`
 
