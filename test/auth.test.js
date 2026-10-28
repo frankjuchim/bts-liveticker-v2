@@ -61,3 +61,13 @@ test('Cookie: HttpOnly, SameSite=Strict, Secure nur bei HTTPS', () => {
   assert.match(a.cookie({ headers: { 'x-forwarded-proto': 'https' }, socket: {} }, 'abc'), /Secure/);
   assert.match(a.cookie({ headers: {}, socket: {} }, null), /Max-Age=0/);
 });
+
+test('ADMIN_PASSWORD: nur dieses gilt, nicht änderbar', () => {
+  const a = authLib.create(fresh(), 'ausDerVariable');
+  assert.ok(!a.isDefault());
+  assert.ok(a.fromEnv());
+  assert.strictEqual(a.login('btsliveadmin', 'ip').status, 401);
+  const t = a.login('ausDerVariable', 'ip').token;
+  assert.ok(t);
+  assert.strictEqual(a.change('ausDerVariable', 'neuesPasswort1', req(t)).status, 409);
+});

@@ -113,6 +113,8 @@ Debian-Updates im Container (Sicherheitsupdates) gehen wie üblich:
   Nach 10 falschen Versuchen innerhalb von 15 Minuten wird die Anmeldung von dieser
   Adresse für 15 Minuten gesperrt.
 - Gespeichert wird nur ein Hash des Passworts in `/var/lib/bts-liveticker/admin.json`.
+- Alternativ lässt sich das Passwort fest über `ADMIN_PASSWORD` in `/etc/bts-liveticker.env`
+  vorgeben – es gilt dann statt `btsliveadmin` und ist im Admin-Panel nicht änderbar.
 
 **Admin-Passwort vergessen?** Auf dem Proxmox-Host zurück auf `btsliveadmin` setzen:
 
@@ -127,6 +129,8 @@ lässt sich im Admin-Panel unter „Einrichtung in BTS“ anzeigen.
 
 Im Admin-Panel unter **Erscheinungsbild**:
 
+1. Optional ein **Design** wählen (fertiges Paket aus Titel, Farbe und Logo – nur sichtbar, wenn
+   unter [designs/](designs/README.md) welche angelegt sind).
 1. Titel, Untertitel, **Link zu allen Spielen** und **Farbe** ändern – Farbe aus zehn Vorgaben
    oder frei per Farbwähler/Hex-Wert, mit Vorschau.
 2. **Speichern** klicken. Solange etwas nicht gespeichert ist, steht dort
@@ -158,6 +162,8 @@ haben Vorrang:
 | `PORT` | `80` | HTTP-Port |
 | `TITLE` | `Badminton` | Überschrift im Kopf, z. B. Vereinsname |
 | `SUBTITLE` | `Turnier-Liveticker` | Zeile darunter |
+| `DESIGN` | `standard` | Voreingestelltes Design (siehe [designs/](designs/README.md)) |
+| `ADMIN_PASSWORD` | – | Festes Admin-Passwort; dann im Admin-Panel nicht änderbar |
 | `ACCENT` | `#1f5f99` | Akzentfarbe (Kopf, Court-Karten, Overlays), z. B. Vereinsfarbe |
 | `LOGO_FILE` | – | Pfad zu einem eigenen Logo |
 | `DATA_DIR` | `/var/lib/bts-liveticker` | gespeicherter Stand |

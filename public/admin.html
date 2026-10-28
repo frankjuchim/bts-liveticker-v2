@@ -65,6 +65,12 @@
   #pwForm button { justify-self: start; }
   @media (max-width: 520px) { #pwForm { grid-template-columns: 1fr; } }
   .secret { cursor: pointer; }
+  .designs { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  .design { display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; border-radius: 10px;
+    border: 2px solid var(--line); background: var(--card); color: var(--text); font: inherit; cursor: pointer; }
+  .design.on { border-color: var(--text); }
+  .design .dlogo { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .design .dlogo img { max-width: 32px; max-height: 32px; object-fit: contain; }
 </style>
 </head>
 <body>
@@ -95,7 +101,7 @@
     <p style="margin-top:0"><b>1. Verbindung</b> – in der BTS-Oberfläche: Turnier bearbeiten → <b>Ticker</b> aktivieren →
       Ticker-Adresse <code class="wsUrl"></code> und Ticker-Passwort
       <code class="secret" id="tickerPw" title="Klicken zum Anzeigen">•••••••• (anzeigen)</code> eintragen
-      (steht als <code>TICKER_PASSWORD</code> in <code>/etc/bts-liveticker.env</code>).</p>
+      (Einstellung <code>TICKER_PASSWORD</code> der Konfiguration).</p>
     <p style="margin-bottom:0"><b>2. Optional: Aufschläger/Rückschläger</b> – dafür braucht BTS eine kleine Erweiterung.
       Sie wird <b>auf dem Rechner/Container eingespielt, auf dem BTS läuft</b> (nicht hier im Liveticker):
       dort im BTS-Verzeichnis ausführen:</p>
@@ -113,6 +119,10 @@
     <form id="brand">
       <p class="muted" style="margin-top:0">Änderungen werden erst mit <b>Speichern</b> übernommen (ein neues Logo sofort beim
         Hochladen).</p>
+      <div id="designBox" hidden>
+        <h3 style="font-size:0.95rem;margin:0 0 8px">Design</h3>
+        <div class="designs" id="designs"></div>
+      </div>
       <div class="fields">
         <label for="bTitle">Titel</label>
         <input type="text" id="bTitle" maxlength="80" placeholder="z. B. Vereinsname">
@@ -174,6 +184,8 @@
 
   <h2 id="pwSection">Admin-Passwort ändern</h2>
   <section class="panel">
+    <p id="pwEnv" class="muted" style="margin:0" hidden>Das Admin-Passwort ist über die Variable <code>ADMIN_PASSWORD</code>
+      festgelegt und wird dort geändert (danach den Dienst bzw. die App neu starten).</p>
     <form id="pwForm">
       <label for="pwCur">Aktuelles Passwort</label>
       <input type="password" id="pwCur" autocomplete="current-password" required>
@@ -253,6 +265,7 @@
   var bHideLink = document.getElementById('bHideLink');
   var accent = '#1f5f99';
   var brand = null;
+  var design = 'standard';
 
   function linkState() { bLink.disabled = bHideLink.checked; }
   bHideLink.addEventListener('change', linkState);
@@ -265,6 +278,7 @@
       bSubtitle.value.trim() !== (c.subtitle || '') ||
       bLink.value.trim() !== (c.link || '') ||
       bHideLink.checked !== !!c.hideLink ||
+      design !== brand.design ||
       accent !== brand.accent;
     document.getElementById('bDirty').hidden = !changed;
   }
@@ -297,9 +311,26 @@
     preview();
   }
 
+  function designOf(id) {
+    return ((brand && brand.designs) || []).filter(function (d) { return d.id === id; })[0] || null;
+  }
+
+  // Logo für Vorschau: hochgeladenes Logo vor Design-Logo vor Federball
+  function previewLogo() {
+    if (brand && brand.logoUploaded) return brand.logoUrl;
+    var d = designOf(design);
+    return (d && d.logoUrl) || '/shuttle.svg';
+  }
+
   function preview() {
-    document.getElementById('pvTitle').textContent = bTitle.value.trim() || (brand && brand.defaults.title) || '';
-    document.getElementById('pvSubtitle').textContent = bSubtitle.value.trim() || (brand && brand.defaults.subtitle) || '';
+    var d = designOf(design) || (brand && brand.defaults) || {};
+    bTitle.placeholder = d.title || '';
+    bSubtitle.placeholder = d.subtitle || '';
+    document.getElementById('pvTitle').textContent = bTitle.value.trim() || d.title || '';
+    document.getElementById('pvSubtitle').textContent = bSubtitle.value.trim() || d.subtitle || '';
+    document.getElementById('pvLogo').src = previewLogo();
+    document.getElementById('logoImg').src = previewLogo();
+    document.querySelectorAll('.design').forEach(function (b) { b.classList.toggle('on', b.dataset.id === design); });
     var pv = document.getElementById('preview');
     pv.style.background = accent;
     document.querySelector('.pv-brand').style.background = accent;
@@ -309,10 +340,38 @@
     document.getElementById('logoBox').style.background = accent;
   }
 
+  // Design wählen: Titel/Untertitel/Farbe kommen dann aus dem Design
+  function chooseDesign(id) {
+    design = id;
+    var d = designOf(id);
+    bTitle.value = '';
+    bSubtitle.value = '';
+    if (d) setAccent(d.accent);
+    preview();
+    setTimeout(dirty);
+  }
+
   function fill(b) {
     brand = b;
-    bTitle.placeholder = b.defaults.title;
-    bSubtitle.placeholder = b.defaults.subtitle;
+    design = b.design;
+    var box = document.getElementById('designs');
+    box.replaceChildren();
+    (b.designs || []).forEach(function (d) {
+      var btn = el('button', 'design');
+      btn.type = 'button';
+      btn.dataset.id = d.id;
+      var lg = el('span', 'dlogo');
+      lg.style.background = d.accent;
+      var img = el('img');
+      img.src = d.logoUrl || '/shuttle.svg';
+      img.alt = '';
+      lg.appendChild(img);
+      btn.appendChild(lg);
+      btn.appendChild(el('span', null, d.name));
+      btn.addEventListener('click', function () { chooseDesign(d.id); });
+      box.appendChild(btn);
+    });
+    document.getElementById('designBox').hidden = (b.designs || []).length < 2;
     bTitle.value = b.custom.title || '';
     bSubtitle.value = b.custom.subtitle || '';
     bLink.value = b.custom.link || '';
@@ -334,8 +393,6 @@
       btn.addEventListener('click', function () { setAccent(p.color); });
       sw.appendChild(btn);
     });
-    document.getElementById('logoImg').src = b.logoUrl;
-    document.getElementById('pvLogo').src = b.logoUrl;
     document.getElementById('logoRemove').hidden = !b.logoUploaded;
     setAccent(b.accent);
   }
@@ -388,7 +445,13 @@
 
   document.getElementById('brand').addEventListener('submit', function (e) {
     e.preventDefault();
-    saveBrand({ title: bTitle.value, subtitle: bSubtitle.value, accent: accent, link: bLink.value, hideLink: bHideLink.checked });
+    // Farbe nur speichern, wenn sie vom gewählten Design abweicht
+    var d = designOf(design);
+    saveBrand({
+      design: design, title: bTitle.value, subtitle: bSubtitle.value,
+      accent: d && d.accent === accent ? '' : accent,
+      link: bLink.value, hideLink: bHideLink.checked,
+    });
   });
   var logoFile = document.getElementById('logoFile');
   document.getElementById('logoPick').addEventListener('click', function () { logoFile.click(); });
@@ -466,6 +529,8 @@
       if (!d) return;
       adminInfo = d;
       document.getElementById('defaultPwAlert').hidden = !d.defaultPassword;
+      document.getElementById('pwEnv').hidden = !d.passwordFromEnv;
+      document.getElementById('pwForm').hidden = !!d.passwordFromEnv;
     });
   }
   loadAdmin();

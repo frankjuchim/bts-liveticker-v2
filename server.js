@@ -19,15 +19,17 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const STATE_FILE = path.join(DATA_DIR, 'bts-liveticker.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
-// Erscheinungsbild: Konfiguration + Einstellungen aus dem Admin-Panel
+// Erscheinungsbild: Konfiguration + Design + Einstellungen aus dem Admin-Panel
+const DESIGNS = branding.loadDesigns(path.join(__dirname, 'designs'));
 let settings = {};
 try {
-  settings = branding.cleanSettings(JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')));
+  settings = branding.cleanSettings(JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')), DESIGNS);
 } catch (e) {
   if (e.code !== 'ENOENT') console.warn('Einstellungen verworfen:', e.message);
 }
-let BRAND = branding.load(process.env, DATA_DIR, settings);
-const auth = authLib.create(DATA_DIR);
+let BRAND = branding.load(process.env, DATA_DIR, settings, DESIGNS);
+// ADMIN_PASSWORD gesetzt → festes Admin-Passwort (im Panel nicht änderbar)
+const auth = authLib.create(DATA_DIR, process.env.ADMIN_PASSWORD);
 let brandVersion = Date.now().toString(36);
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PATCH_DIR = path.join(__dirname, 'bts-patch');
@@ -309,6 +311,18 @@ function serveBrandLogo(req, res) {
   });
 }
 
+// Logo eines Designs (Vorschau im Admin-Panel)
+function serveDesignLogo(req, res, id) {
+  const d = DESIGNS[id];
+  if (!d || !d.logoFile) return send(res, 404, 'Not found', 'text/plain');
+  fs.readFile(d.logoFile, (err, buf) => {
+    if (err) return send(res, 404, 'Not found', 'text/plain');
+    send(res, 200, buf, MIME[path.extname(d.logoFile).toLowerCase()] || 'application/octet-stream', {
+      'Cache-Control': 'public, max-age=3600',
+    });
+  });
+}
+
 // Turnierlogo, das BTS mitschickt
 function serveLogo(req, res) {
   const t = data.tournament;
@@ -340,8 +354,17 @@ function readBody(req, cb, max) {
 }
 
 function brandInfo() {
-  const defaults = branding.load(process.env, DATA_DIR);
+  // Werte ohne eigene Anpassungen (für das gewählte Design) – Platzhalter im Admin-Panel
+  const defaults = branding.load(process.env, DATA_DIR, { design: settings.design }, DESIGNS);
   return {
+    design: BRAND.design,
+    designs: Object.values(DESIGNS).map((d) => {
+      const b = branding.load(process.env, DATA_DIR, { design: d.id }, DESIGNS);
+      return {
+        id: d.id, name: d.name, title: b.title, subtitle: b.subtitle, accent: b.accent,
+        logoUrl: d.logoFile ? '/design-logo/' + d.id : null,
+      };
+    }),
     title: BRAND.title,
     subtitle: BRAND.subtitle,
     accent: BRAND.accent,
@@ -357,7 +380,7 @@ function brandInfo() {
 
 // Erscheinungsbild neu laden und offenen Seiten mitteilen
 function brandChanged() {
-  BRAND = branding.load(process.env, DATA_DIR, settings);
+  BRAND = branding.load(process.env, DATA_DIR, settings, DESIGNS);
   brandVersion = Date.now().toString(36);
   const info = JSON.stringify(brandInfo());
   sendAll('brand', info);
@@ -447,7 +470,7 @@ function handleBrand(req, res) {
     try { input = JSON.parse(body) || {}; } catch (e) { /* leer */ }
     let next;
     try {
-      next = input.reset ? {} : branding.cleanSettings(input);
+      next = input.reset ? {} : branding.cleanSettings(input, DESIGNS);
     } catch (e) {
       return send(res, 400, JSON.stringify({ error: e.message }));
     }
@@ -488,7 +511,9 @@ const server = http.createServer((req, res) => {
   if (pathname === '/api/brand') return send(res, 200, JSON.stringify(brandInfo()));
   if (pathname === '/api/admin') {
     if (!requireAdmin(req, res)) return;
-    return send(res, 200, JSON.stringify({ defaultPassword: auth.isDefault(), tickerPassword: TICKER_PASSWORD }), null, {
+    return send(res, 200, JSON.stringify({
+      defaultPassword: auth.isDefault(), passwordFromEnv: auth.fromEnv(), tickerPassword: TICKER_PASSWORD,
+    }), null, {
       'Cache-Control': 'no-store',
     });
   }
@@ -496,6 +521,7 @@ const server = http.createServer((req, res) => {
   if (pathname === '/tournament-logo') return serveLogo(req, res);
   if (pathname === '/config.css') return send(res, 200, BRAND.css, 'text/css; charset=utf-8', { 'Cache-Control': 'no-cache' });
   if (pathname.startsWith('/brand-logo')) return serveBrandLogo(req, res);
+  if (pathname.startsWith('/design-logo/')) return serveDesignLogo(req, res, pathname.slice(13));
   if (pathname.startsWith('/bts-patch/')) return servePatch(req, res, pathname.slice(11));
   if (pathname === '/healthz') return send(res, 200, '{"ok":true}');
   serveStatic(req, res, pathname);

@@ -72,3 +72,34 @@ test('Link-Einstellung: nur http(s)-Adressen, ausblenden möglich', () => {
   assert.throws(() => branding.cleanSettings({ link: 'javascript:alert(1)' }));
   assert.throws(() => branding.cleanSettings({ link: 'dbv.turnier.de' }));
 });
+
+test('Designs: laden, auswählen, eigene Werte gehen vor', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'designs-'));
+  fs.mkdirSync(path.join(dir, 'tvm'));
+  fs.writeFileSync(path.join(dir, 'tvm', 'logo.png'), Buffer.from('89504e470d0a1a0a', 'hex'));
+  fs.writeFileSync(path.join(dir, 'tvm', 'design.json'), JSON.stringify({
+    name: 'TV Metjendorf', title: 'TV Metjendorf', subtitle: 'Badminton', accent: '#960000', logo: 'logo.png',
+  }));
+  fs.mkdirSync(path.join(dir, 'kaputt'));
+  fs.writeFileSync(path.join(dir, 'kaputt', 'design.json'), '{');
+  const designs = branding.loadDesigns(dir);
+  assert.deepStrictEqual(Object.keys(designs).sort(), ['standard', 'tvm']);
+  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'data-'));
+  let b = branding.load({}, data, {}, designs);
+  assert.strictEqual(b.design, 'standard');
+  assert.strictEqual(b.title, 'Badminton');
+  b = branding.load({ DESIGN: 'tvm' }, data, {}, designs);
+  assert.strictEqual(b.design, 'tvm');
+  assert.strictEqual(b.title, 'TV Metjendorf');
+  assert.strictEqual(b.accent, '#960000');
+  assert.match(b.logoUrl, /^\/brand-logo\.png/);
+  b = branding.load({ DESIGN: 'tvm' }, data, { design: 'standard' }, designs);
+  assert.strictEqual(b.title, 'Badminton', 'Auswahl im Admin-Panel geht vor DESIGN');
+  b = branding.load({}, data, { design: 'tvm', title: 'Eigener Titel', accent: '#0a7d3b' }, designs);
+  assert.strictEqual(b.title, 'Eigener Titel');
+  assert.strictEqual(b.accent, '#0a7d3b');
+  assert.throws(() => branding.cleanSettings({ design: 'gibtsnicht' }, designs));
+});
