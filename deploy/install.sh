@@ -81,7 +81,8 @@ SUFFIX=""; [ "$PORT" = 80 ] || SUFFIX=":$PORT"
 cat <<INFO
 
   Liveticker:        http://$IP$SUFFIX/
-  Status/Overlays:   http://$IP$SUFFIX/admin
+  Admin-Panel:       http://$IP$SUFFIX/admin
+                     Passwort btsliveadmin (falls noch nicht geändert – bitte im Admin-Panel ändern)
   In BTS eintragen:  Ticker-Adresse  ws://$IP$SUFFIX/ws/update
                      Ticker-Passwort $(sed -n 's/^TICKER_PASSWORD=//p' "$ENV_FILE")
   Konfiguration:     $ENV_FILE

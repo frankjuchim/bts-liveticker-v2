@@ -55,13 +55,28 @@
     position: sticky; bottom: 0; z-index: 2; background: var(--card); padding: 10px 16px;
     border-top: 1px solid var(--line); box-shadow: 0 -4px 10px rgba(0,0,0,0.06); }
   .actions button.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  .brand .logout { margin-left: auto; font: inherit; font-size: 0.85rem; padding: 6px 12px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.6); background: transparent; color: #fff; cursor: pointer; }
+  .alert { background: #fff4e5; color: #6b3d00; border: 1px solid #f0c27b; border-radius: 10px; padding: 12px 14px; margin-top: 16px; }
+  @media (prefers-color-scheme: dark) { .alert { background: #3a2a10; color: #ffd9a0; border-color: #7a5520; } }
+  .alert button { font: inherit; margin-left: 8px; padding: 4px 10px; border-radius: 6px; border: 0; background: var(--club); color: #fff; cursor: pointer; }
+  #pwForm { display: grid; grid-template-columns: max-content minmax(0, 300px); gap: 10px 14px; align-items: center; }
+  #pwForm label { color: var(--muted); }
+  #pwForm button { justify-self: start; }
+  @media (max-width: 520px) { #pwForm { grid-template-columns: 1fr; } }
+  .secret { cursor: pointer; }
 </style>
 </head>
 <body>
 <main class="wrap">
   <div class="brand">
     <img src="{{LOGO}}" alt="" data-brand-logo>
-    <div><b data-brand="title">{{TITLE}}</b><span><span data-brand="subtitle">{{SUBTITLE}}</span> · Status</span></div>
+    <div><b data-brand="title">{{TITLE}}</b><span><span data-brand="subtitle">{{SUBTITLE}}</span> · Admin</span></div>
+    <button type="button" class="logout" id="logout">Abmelden</button>
+  </div>
+  <div class="alert" id="defaultPwAlert" hidden>
+    <b>Das Admin-Passwort ist noch das Standardpasswort.</b> Jeder, der es kennt, kann hier Einstellungen ändern.
+    <button type="button" id="toPw">Jetzt ändern</button>
   </div>
   <section class="panel">
     <dl>
@@ -79,7 +94,8 @@
   <section class="panel">
     <p style="margin-top:0"><b>1. Verbindung</b> – in der BTS-Oberfläche: Turnier bearbeiten → <b>Ticker</b> aktivieren →
       Ticker-Adresse <code class="wsUrl"></code> und Ticker-Passwort
-      (= <code>TICKER_PASSWORD</code> aus <code>/etc/bts-liveticker.env</code> dieses Containers) eintragen.</p>
+      <code class="secret" id="tickerPw" title="Klicken zum Anzeigen">•••••••• (anzeigen)</code> eintragen
+      (steht als <code>TICKER_PASSWORD</code> in <code>/etc/bts-liveticker.env</code>).</p>
     <p style="margin-bottom:0"><b>2. Optional: Aufschläger/Rückschläger</b> – dafür braucht BTS eine kleine Erweiterung.
       Sie wird <b>auf dem Rechner/Container eingespielt, auf dem BTS läuft</b> (nicht hier im Liveticker):
       dort im BTS-Verzeichnis ausführen:</p>
@@ -96,11 +112,8 @@
   <section class="panel">
     <form id="brand">
       <p class="muted" style="margin-top:0">Änderungen werden erst mit <b>Speichern</b> übernommen (ein neues Logo sofort beim
-        Hochladen). Dafür wird das Ticker-Passwort gebraucht – <code>TICKER_PASSWORD</code> in
-        <code>/etc/bts-liveticker.env</code>, wird auch am Ende der Installation angezeigt.</p>
+        Hochladen).</p>
       <div class="fields">
-        <label for="bPw">Ticker-Passwort</label>
-        <input type="password" id="bPw" placeholder="zum Speichern nötig" autocomplete="current-password" style="max-width:260px">
         <label for="bTitle">Titel</label>
         <input type="text" id="bTitle" maxlength="80" placeholder="z. B. Vereinsname">
         <label for="bSubtitle">Untertitel</label>
@@ -154,10 +167,24 @@
     <p class="muted" style="margin-top:0">Löscht alle gespeicherten Ergebnisse (Spiele, die gerade auf einem Court liegen, bleiben).
       Ein neues Turnier in BTS (anderer Name) setzt die Liste automatisch zurück.</p>
     <form id="reset">
-      <input type="password" id="pw" placeholder="Ticker-Passwort" autocomplete="current-password" required>
-      <button type="submit">Zurücksetzen</button>
+      <button type="submit">Ergebnisse löschen</button>
     </form>
     <div id="resetMsg"></div>
+  </section>
+
+  <h2 id="pwSection">Admin-Passwort ändern</h2>
+  <section class="panel">
+    <form id="pwForm">
+      <label for="pwCur">Aktuelles Passwort</label>
+      <input type="password" id="pwCur" autocomplete="current-password" required>
+      <label for="pwNew">Neues Passwort</label>
+      <input type="password" id="pwNew" autocomplete="new-password" minlength="8" required placeholder="mindestens 8 Zeichen">
+      <label for="pwNew2">Wiederholen</label>
+      <input type="password" id="pwNew2" autocomplete="new-password" minlength="8" required>
+      <span></span>
+      <button type="submit">Passwort ändern</button>
+    </form>
+    <div id="pwMsg" style="margin-top:8px"></div>
   </section>
 </main>
 <script src="/live.js"></script>
@@ -326,30 +353,31 @@
   bTitle.addEventListener('input', preview);
   bSubtitle.addEventListener('input', preview);
 
-  function saveBrand(payload, url, okText, msgId) {
-    var msg = document.getElementById(msgId || 'brandMsg');
-    payload.password = document.getElementById('bPw').value;
-    if (!payload.password) {
-      msg.textContent = 'Bitte oben das Ticker-Passwort eingeben.';
-      msg.className = 'bad';
-      document.getElementById('bPw').focus();
-      document.getElementById('bPw').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      return;
-    }
-    msg.textContent = 'Speichere …';
-    msg.className = 'muted';
-    fetch(url || '/api/brand', {
+  // POST an die Admin-API; abgelaufene Anmeldung → zurück zur Login-Seite
+  function post(url, payload) {
+    return fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      credentials: 'same-origin',
+      body: JSON.stringify(payload || {}),
     }).then(function (r) {
       return r.json().catch(function () {
         // keine JSON-Antwort: kommt meist von einem Reverse-Proxy davor
         return { error: r.status === 413
           ? 'Upload zu groß für den Reverse-Proxy (nginx: client_max_body_size erhöhen, siehe README).'
           : 'Fehler ' + r.status + ' beim Speichern.' };
-      }).then(function (d) { return { ok: r.ok, d: d }; });
-    }).then(function (x) {
+      }).then(function (d) {
+        if (r.status === 401 && d.login) { location.reload(); return new Promise(function () {}); }
+        return { ok: r.ok, d: d };
+      });
+    });
+  }
+
+  function saveBrand(payload, url, okText, msgId) {
+    var msg = document.getElementById(msgId || 'brandMsg');
+    msg.textContent = 'Speichere …';
+    msg.className = 'muted';
+    post(url || '/api/brand', payload).then(function (x) {
       if (x.ok) { fill(x.d); msg.textContent = okText || 'Gespeichert.'; msg.className = 'ok'; }
       else { msg.textContent = x.d.error || 'Fehler'; msg.className = 'bad'; }
     }).catch(function () {
@@ -419,13 +447,60 @@
     e.preventDefault();
     var msg = document.getElementById('resetMsg');
     if (!confirm('Alle gespeicherten Ergebnisse löschen?')) return;
-    fetch('/api/reset', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: document.getElementById('pw').value }),
-    }).then(function (r) {
-      msg.textContent = r.ok ? 'Ergebnisse gelöscht.' : 'Falsches Passwort.';
-      msg.className = r.ok ? 'ok' : 'bad';
+    post('/api/reset').then(function (x) {
+      msg.textContent = x.ok ? 'Ergebnisse gelöscht.' : (x.d.error || 'Fehler');
+      msg.className = x.ok ? 'ok' : 'bad';
+    }).catch(function () {
+      msg.textContent = 'Fehler beim Senden.';
+      msg.className = 'bad';
+    });
+  });
+
+  // ---- Anmeldung: Abmelden, Standardpasswort-Hinweis, Ticker-Passwort, Passwort ändern
+  var adminInfo = {};
+  function loadAdmin() {
+    fetch('/api/admin', { cache: 'no-store', credentials: 'same-origin' }).then(function (r) {
+      if (r.status === 401) { location.reload(); return null; }
+      return r.json();
+    }).then(function (d) {
+      if (!d) return;
+      adminInfo = d;
+      document.getElementById('defaultPwAlert').hidden = !d.defaultPassword;
+    });
+  }
+  loadAdmin();
+
+  document.getElementById('logout').addEventListener('click', function () {
+    post('/api/logout').then(function () { location.reload(); });
+  });
+  document.getElementById('toPw').addEventListener('click', function () {
+    document.getElementById('pwSection').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('pwCur').focus({ preventScroll: true });
+  });
+  document.getElementById('tickerPw').addEventListener('click', function () {
+    this.textContent = adminInfo.tickerPassword || '(nicht gesetzt)';
+    this.classList.remove('secret');
+  });
+
+  document.getElementById('pwForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var msg = document.getElementById('pwMsg');
+    var next = document.getElementById('pwNew').value;
+    if (next !== document.getElementById('pwNew2').value) {
+      msg.textContent = 'Die beiden neuen Passwörter stimmen nicht überein.';
+      msg.className = 'bad';
+      return;
+    }
+    post('/api/admin-password', { current: document.getElementById('pwCur').value, next: next }).then(function (x) {
+      if (x.ok) {
+        msg.textContent = 'Passwort geändert. Andere Anmeldungen wurden beendet.';
+        msg.className = 'ok';
+        document.getElementById('pwForm').reset();
+        loadAdmin();
+      } else {
+        msg.textContent = x.d.error || 'Fehler';
+        msg.className = 'bad';
+      }
     }).catch(function () {
       msg.textContent = 'Fehler beim Senden.';
       msg.className = 'bad';

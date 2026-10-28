@@ -30,7 +30,8 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-livetick
 
 Voraussetzung: Proxmox VE 8 oder neuer (7.4 mit allen Updates sollte auch gehen). Das Skript lädt eine Debian-12-Vorlage, legt einen unprivilegierten LXC-Container an
 (1 Kern, 512 MB RAM, 4 GB Platte, DHCP, startet mit dem Host) und installiert den Liveticker.
-Am Ende stehen Adresse und Ticker-Passwort im Terminal.
+Am Ende stehen Adresse, Ticker-Passwort und das Admin-Passwort (`btsliveadmin`, bitte gleich
+ändern) im Terminal.
 
 Einstellungen über Variablen, z. B. feste IP und anderer Speicher:
 
@@ -61,7 +62,7 @@ curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/
 
 ### Update
 
-Neue Versionen holt man mit einem Befehl. Konfiguration, Passwort, Logo, Farben und
+Neue Versionen holt man mit einem Befehl. Konfiguration, Passwörter, Logo, Farben und
 gespeicherte Ergebnisse bleiben erhalten; BTS verbindet sich danach von selbst wieder.
 
 **Vom Proxmox-Host aus (empfohlen):** im Web-UI *Datacenter → Knoten → Shell* öffnen und
@@ -99,14 +100,36 @@ Welche Version läuft? `pct exec <CTID> -- git -C /opt/bts-liveticker log -1 --f
 Debian-Updates im Container (Sicherheitsupdates) gehen wie üblich:
 `pct exec <CTID> -- bash -c "apt update && apt -y upgrade"`
 
-## Erscheinungsbild und Link im Admin-Panel
+## Admin-Panel
 
-Unter `http://<IP>/admin` → **Erscheinungsbild**:
+`http://<IP>/admin` ist durch ein **Admin-Passwort** geschützt.
 
-1. **Ticker-Passwort** oben eintragen (nötig zum Speichern).
-2. Titel, Untertitel, **Link zu allen Spielen** und **Farbe** ändern – Farbe aus zehn Vorgaben
+- **Standardpasswort: `btsliveadmin`** – gilt bei neuen Installationen und nach dem Update
+  bestehender Systeme, bis es geändert wird. Solange es aktiv ist, zeigt das Admin-Panel oben
+  einen Hinweis.
+- **Ändern:** nach dem Anmelden unten im Abschnitt **„Admin-Passwort ändern“** (mindestens
+  8 Zeichen). Andere angemeldete Browser werden dabei abgemeldet.
+- Angemeldet bleibt man 7 Tage (bzw. bis „Abmelden“ oder einem Neustart des Dienstes).
+  Nach 10 falschen Versuchen innerhalb von 15 Minuten wird die Anmeldung von dieser
+  Adresse für 15 Minuten gesperrt.
+- Gespeichert wird nur ein Hash des Passworts in `/var/lib/bts-liveticker/admin.json`.
+
+**Admin-Passwort vergessen?** Auf dem Proxmox-Host zurück auf `btsliveadmin` setzen:
+
+```sh
+pct exec <CTID> -- bash -c "rm -f /var/lib/bts-liveticker/admin.json && systemctl restart bts-liveticker"
+```
+
+Das **Ticker-Passwort** (für BTS) ist ein anderes: Es steht in `/etc/bts-liveticker.env` und
+lässt sich im Admin-Panel unter „Einrichtung in BTS“ anzeigen.
+
+### Erscheinungsbild und Link
+
+Im Admin-Panel unter **Erscheinungsbild**:
+
+1. Titel, Untertitel, **Link zu allen Spielen** und **Farbe** ändern – Farbe aus zehn Vorgaben
    oder frei per Farbwähler/Hex-Wert, mit Vorschau.
-3. **Speichern** klicken. Solange etwas nicht gespeichert ist, steht dort
+2. **Speichern** klicken. Solange etwas nicht gespeichert ist, steht dort
    „Nicht gespeicherte Änderungen“.
 
 Ein **Logo** wird sofort beim Hochladen gespeichert (PNG, JPG, WebP oder SVG bis 10 MB, am besten
@@ -120,7 +143,7 @@ BTS die „Turnier Guid“ eingetragen ist – und immer mit `www.turnier.de`. L
 auf `dbv.turnier.de`, einfach die Adresse der Turnierseite ins Feld kopieren
 (z. B. `https://dbv.turnier.de/tournament/<GUID>/matches`) oder den Link ausblenden.
 
-**Passwort vergessen?** Auf dem Proxmox-Host:
+**Ticker-Passwort nachsehen** (ohne Admin-Panel), auf dem Proxmox-Host:
 `pct exec <CTID> -- grep TICKER_PASSWORD /etc/bts-liveticker.env`
 
 ## Konfiguration
@@ -199,7 +222,7 @@ zusehen, braucht es eine öffentliche Adresse mit HTTPS, z. B.:
 | `/` | Liveticker für Zuschauer |
 | `/court/<nr>` | Overlay für einen Court (transparenter Hintergrund) |
 | `/courts` | Overlay mehrerer Courts (Standard: alle belegten untereinander) |
-| `/admin` | Verbindungsstatus, Overlay-Links, Erscheinungsbild/Logo/Link, Ergebnisse zurücksetzen |
+| `/admin` | Mit Passwort: Verbindungsstatus, Overlay-Links, Erscheinungsbild/Logo/Link, Ergebnisse zurücksetzen |
 | `/api/state` | Aktueller Stand als JSON |
 
 ### Parameter für die Overlays

@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const store = require('./lib/store');
 const branding = require('./lib/branding');
+const authLib = require('./lib/auth');
 
 const PORT = parseInt(process.env.PORT || '80', 10);
 const TICKER_PASSWORD = process.env.TICKER_PASSWORD || '';
@@ -26,6 +27,7 @@ try {
   if (e.code !== 'ENOENT') console.warn('Einstellungen verworfen:', e.message);
 }
 let BRAND = branding.load(process.env, DATA_DIR, settings);
+const auth = authLib.create(DATA_DIR);
 let brandVersion = Date.now().toString(36);
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PATCH_DIR = path.join(__dirname, 'bts-patch');
@@ -261,23 +263,33 @@ const MIME = {
 const ROUTES = {
   '/': 'index.html',
   '/courts': 'courts.html',
-  '/admin': 'admin.html',
 };
 
 function serveStatic(req, res, pathname) {
   const clean = pathname.replace(/\/+$/, '') || '/';
+  // Admin-Panel nur nach Anmeldung, sonst die Login-Seite
+  if (clean === '/admin' || clean === '/admin.html') {
+    return serveFile(res, auth.loggedIn(req) ? 'admin.html' : 'login.html', {
+      'Cache-Control': 'no-store',
+      'X-Frame-Options': 'DENY',
+    });
+  }
   let file = ROUTES[clean];
   if (!file && /^\/court\/[^/]+$/.test(clean)) file = 'court.html';
   if (!file) file = clean.replace(/^\/+/, '');
+  serveFile(res, file);
+}
+
+function serveFile(res, file, headers) {
   const full = path.normalize(path.join(PUBLIC_DIR, file));
   if (!full.startsWith(PUBLIC_DIR + path.sep)) return send(res, 404, 'Not found', 'text/plain');
   fs.readFile(full, (err, buf) => {
     if (err) return send(res, 404, 'Not found', 'text/plain; charset=utf-8');
     const ext = path.extname(full);
-    res.writeHead(200, {
+    res.writeHead(200, Object.assign({
       'Content-Type': MIME[ext] || 'application/octet-stream',
       'Cache-Control': 'no-cache',
-    });
+    }, headers || {}));
     // Titel/Logo aus der Konfiguration einsetzen
     res.end(ext === '.html' ? branding.render(buf.toString('utf8'), BRAND) : buf);
   });
@@ -355,13 +367,62 @@ function brandChanged() {
   return info;
 }
 
-// Logo hochladen ({ password, data: Base64 }) oder entfernen ({ password, remove: true })
+// Admin-Aktionen nur mit Anmeldung; sonst 401 (die Seite zeigt dann den Login)
+function requireAdmin(req, res) {
+  if (auth.loggedIn(req)) return true;
+  send(res, 401, '{"error":"Nicht angemeldet – bitte neu anmelden","login":true}');
+  return false;
+}
+
+function clientIp(req) {
+  return String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+}
+
+function handleLogin(req, res) {
+  readBody(req, (body) => {
+    let input = {};
+    try { input = JSON.parse(body) || {}; } catch (e) { /* leer */ }
+    const r = auth.login(input.password, clientIp(req));
+    if (!r.token) {
+      if (r.status === 401) console.warn('Admin-Login fehlgeschlagen von', clientIp(req));
+      return send(res, r.status, JSON.stringify({ error: r.error }));
+    }
+    send(res, 200, JSON.stringify({ ok: true, defaultPassword: auth.isDefault() }), null, {
+      'Set-Cookie': auth.cookie(req, r.token),
+    });
+  });
+}
+
+function handleLogout(req, res) {
+  auth.logout(req);
+  send(res, 200, '{"ok":true}', null, { 'Set-Cookie': auth.cookie(req, null) });
+}
+
+// Admin-Passwort ändern ({ current, next })
+function handleAdminPassword(req, res) {
+  if (!requireAdmin(req, res)) return;
+  readBody(req, (body) => {
+    let input = {};
+    try { input = JSON.parse(body) || {}; } catch (e) { /* leer */ }
+    let r;
+    try {
+      r = auth.change(input.current, input.next, req);
+    } catch (e) {
+      return send(res, 500, JSON.stringify({ error: 'Speichern fehlgeschlagen: ' + e.message }));
+    }
+    if (!r.ok) return send(res, r.status, JSON.stringify({ error: r.error }));
+    console.log('Admin-Passwort geändert');
+    send(res, 200, '{"ok":true}');
+  });
+}
+
+// Logo hochladen ({ data: Base64 }) oder entfernen ({ remove: true })
 function handleLogo(req, res) {
+  if (!requireAdmin(req, res)) return;
   readBody(req, (body) => {
     if (body == null) return send(res, 413, '{"error":"Logo ist zu groß (max. 10 MB)"}');
     let input = {};
     try { input = JSON.parse(body) || {}; } catch (e) { /* leer */ }
-    if (!passwordOk(input.password)) return send(res, 401, '{"error":"Falsches Passwort"}');
     try {
       if (input.remove) {
         branding.removeLogo(DATA_DIR);
@@ -380,10 +441,10 @@ function handleLogo(req, res) {
 
 // Titel/Untertitel/Farbe aus dem Admin-Panel speichern ({ reset: true } = Standard)
 function handleBrand(req, res) {
+  if (!requireAdmin(req, res)) return;
   readBody(req, (body) => {
     let input = {};
     try { input = JSON.parse(body) || {}; } catch (e) { /* leer */ }
-    if (!passwordOk(input.password)) return send(res, 401, '{"error":"Falsches Passwort"}');
     let next;
     try {
       next = input.reset ? {} : branding.cleanSettings(input);
@@ -403,10 +464,8 @@ function handleBrand(req, res) {
 
 // Ergebnisliste leeren (z. B. vor einem neuen Turniertag)
 function handleReset(req, res) {
-  readBody(req, (body) => {
-    let given = '';
-    try { given = JSON.parse(body).password; } catch (e) { /* leer */ }
-    if (!passwordOk(given)) return send(res, 401, '{"error":"Falsches Passwort"}');
+  if (!requireAdmin(req, res)) return;
+  readBody(req, () => {
     const onCourt = new Set(data.courts.map((c) => c.match).filter(Boolean));
     for (const id of Object.keys(data.matches)) if (!onCourt.has(id)) delete data.matches[id];
     data.updatedAt = new Date().toISOString();
@@ -421,9 +480,18 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && pathname === '/api/reset') return handleReset(req, res);
   if (req.method === 'POST' && pathname === '/api/brand') return handleBrand(req, res);
   if (req.method === 'POST' && pathname === '/api/logo') return handleLogo(req, res);
+  if (req.method === 'POST' && pathname === '/api/login') return handleLogin(req, res);
+  if (req.method === 'POST' && pathname === '/api/logout') return handleLogout(req, res);
+  if (req.method === 'POST' && pathname === '/api/admin-password') return handleAdminPassword(req, res);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, '{"error":"method"}');
   if (pathname === '/api/state') return send(res, 200, stateJson);
   if (pathname === '/api/brand') return send(res, 200, JSON.stringify(brandInfo()));
+  if (pathname === '/api/admin') {
+    if (!requireAdmin(req, res)) return;
+    return send(res, 200, JSON.stringify({ defaultPassword: auth.isDefault(), tickerPassword: TICKER_PASSWORD }), null, {
+      'Cache-Control': 'no-store',
+    });
+  }
   if (pathname === '/api/events') return handleEvents(req, res);
   if (pathname === '/tournament-logo') return serveLogo(req, res);
   if (pathname === '/config.css') return send(res, 200, BRAND.css, 'text/css; charset=utf-8', { 'Cache-Control': 'no-cache' });
