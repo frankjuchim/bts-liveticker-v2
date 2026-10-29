@@ -200,6 +200,14 @@ a.court:hover { text-decoration: underline; }
   text-shadow: 0 2px 6px rgba(0,0,0,0.35);
   pointer-events: none;
 }
+.fsets { position: absolute; left: 50%; top: 66%; transform: translateX(-50%); pointer-events: none;
+  font-size: clamp(0.65rem, 3.4cqi, 1.6rem); font-variant-numeric: tabular-nums; line-height: 1.25; text-shadow: 0 1px 3px rgba(0,0,0,0.45); }
+.fsets.center { top: 50%; transform: translate(-50%, -50%); font-size: clamp(0.9rem, 6cqi, 3rem); }
+.fset { display: grid; grid-template-columns: 2.2em 0.8em 2.2em; color: rgba(255,255,255,0.7); }
+.fset .l { text-align: right; }
+.fset .c { text-align: center; }
+.fset .r { text-align: left; }
+.fset .won { color: #ffd84d; font-weight: 800; }
 .fscore.left { left: 42%; }
 .fscore.right { left: 58%; }
 .fscore.bump { animation: f-bump 0.6s ease-out; }

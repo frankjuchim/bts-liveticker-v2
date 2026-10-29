@@ -165,13 +165,27 @@
       if (showPts && prev && prev.cur && prev.cur[side] !== cur[side]) once(sc, 'bump');
       f.appendChild(sc);
     });
+
+    // Gespielte Sätze unter dem Punktestand – aus Sicht der Seiten (links : rechts),
+    // der Gewinner des Satzes hervorgehoben
+    var done = BL.splitSets(m).done;
+    if (done.length) {
+      var leftSide = onLeft(m, 'home') ? 'home' : 'away';
+      var rightSide = leftSide === 'home' ? 'away' : 'home';
+      var fs = el('div', 'fsets' + (showPts ? '' : ' center'));
+      done.forEach(function (st) {
+        var row = el('div', 'fset');
+        row.appendChild(el('span', 'l' + (st.winner === leftSide ? ' won' : ''), String(st[leftSide])));
+        row.appendChild(el('span', 'c', ':'));
+        row.appendChild(el('span', 'r' + (st.winner === rightSide ? ' won' : ''), String(st[rightSide])));
+        fs.appendChild(row);
+      });
+      f.appendChild(fs);
+    }
     card.appendChild(f);
 
     // Sätze
     var foot = el('div', 'field-foot');
-    var done = BL.splitSets(m).done;
-    if (done.length) foot.appendChild(el('span', 'f-sets', 'Sätze ' + done.map(function (s) { return s.home + ':' + s.away; }).join('  ')));
-    if (m.status === 'finished') foot.appendChild(el('span', 'f-result', m.setsWon[0] + ':' + m.setsWon[1]));
     if (!sv && m.status === 'live') foot.appendChild(el('span', 'muted', 'Aufschlag unbekannt'));
     card.appendChild(foot);
     return { el: card, key: key(m), arrowKey: JSON.stringify(sv), cur: showPts ? cur : null };
