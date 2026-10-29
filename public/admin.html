@@ -43,6 +43,13 @@
   .pv-row span { padding: 6px 14px; }
   .pv-row b { background: #fff; width: 44px; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; }
   .warn { color: var(--live); margin-top: 8px; }
+  .ext-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 10px 0; }
+  .ext-table th, .ext-table td { padding: 5px 8px; border-bottom: 1px solid var(--line, rgba(127,127,127,0.25)); text-align: left; vertical-align: top; }
+  .ext-table thead th { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+  .ext-table tbody th { font-weight: 400; }
+  .ext-table td { white-space: nowrap; }
+  .ext-table td:last-child { font-weight: 600; }
+  @media (max-width: 560px) { .ext-table td { white-space: normal; } }
   pre.cmd { background: var(--bg); padding: 8px 10px; border-radius: 6px; white-space: pre-wrap; word-break: break-all; font-size: 0.85rem; margin: 8px 0; user-select: all; }
   .logo-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
   .logo-box { width: 72px; height: 72px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
@@ -102,10 +109,27 @@
       Ticker-Adresse <code class="wsUrl"></code> und Ticker-Passwort
       <code class="secret" id="tickerPw" title="Klicken zum Anzeigen">•••••••• (anzeigen)</code> eintragen
       (Einstellung <code>TICKER_PASSWORD</code> der Konfiguration).</p>
-    <p style="margin-bottom:0"><b>2. Optional: Aufschläger/Rückschläger, Vereine, Spieldauer, „Als Nächstes“</b> – dafür braucht BTS eine kleine Erweiterung
-      (derselbe Befehl aktualisiert auch eine ältere Version).
-      Sie wird <b>auf dem Rechner/Container eingespielt, auf dem BTS läuft</b> (nicht hier im Liveticker):
-      dort im BTS-Verzeichnis ausführen:</p>
+    <p style="margin-bottom:0"><b>2. Optional: BTS-Erweiterung (v2)</b> – der Liveticker funktioniert auch ohne sie.
+      Die Erweiterung lässt BTS ein paar zusätzliche Daten an den Ticker schicken:</p>
+    <table class="ext-table">
+      <thead><tr><th></th><th>ohne Erweiterung</th><th>mit Erweiterung v2</th></tr></thead>
+      <tbody>
+        <tr><th>Spielstände, Ergebnisse, Overlays, Ergebnis-Einblendung</th><td>✓</td><td>✓</td></tr>
+        <tr><th>Spielern folgen, Hinweise bei Aufruf und Spielende, Spielerseite</th><td>✓</td><td>✓</td></tr>
+        <tr><th>Aufschläger (Punkt) und Rückschläger (unterstrichen)</th><td>–</td><td>✓</td></tr>
+        <tr><th>Spielfeld-Ansicht wie in bup</th><td>–</td><td>✓</td></tr>
+        <tr><th>Vereine der Spieler (anzeigen, Vereinen folgen)</th><td>–</td><td>✓</td></tr>
+        <tr><th>Spieldauer</th><td>geschätzt (ab erstem Punkt)</td><td>genau (aus bup)</td></tr>
+        <tr><th>„Als Nächstes“: Spiele in Vorbereitung und angesetzte Spiele</th><td>–</td><td>✓</td></tr>
+        <tr><th>Verzug zum Zeitplan und voraussichtlicher Beginn (Schätzung)</th><td>–</td><td>✓</td></tr>
+      </tbody>
+    </table>
+    <p class="muted" style="font-size:0.88rem">Geändert wird nur die Datei <code>bts/ticker_conn.js</code> (die Ticker-Anbindung):
+      BTS schickt zusätzliche Felder mit, Bedienung, Datenbank und alle anderen Funktionen von BTS bleiben unverändert.
+      Die Änderung wird als lokaler Git-Commit gespeichert, damit sie bei BTS-Updates (<code>git pull</code>) erhalten bleibt,
+      und lässt sich jederzeit wieder entfernen (siehe Anleitung).</p>
+    <p style="margin-bottom:0">Eingespielt wird sie <b>auf dem Rechner/Container, auf dem BTS läuft</b> (nicht hier im Liveticker) –
+      dort im BTS-Verzeichnis ausführen und BTS danach neu starten (derselbe Befehl aktualisiert auch eine ältere Version):</p>
     <pre class="cmd">curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/bts-patch/apply.sh | bash</pre>
     <p style="margin-bottom:0"><a href="https://github.com/frankjuchim/bts-liveticker-v2/blob/main/docs/BTS-UPGRADE.md" target="_blank" rel="noopener">Ausführliche Anleitung</a></p>
   </section>
