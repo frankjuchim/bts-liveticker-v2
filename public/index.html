@@ -108,11 +108,19 @@
     return el('span', 'badge done', 'Beendet');
   }
 
+  // „Court 1“ führt zum großen Spielfeld dieses Courts
+  function courtLink(nr) {
+    var a = el('a', 'court', 'Court ' + nr);
+    a.href = '/feld/' + encodeURIComponent(nr);
+    a.title = 'Spielfeld von Court ' + nr + ' groß anzeigen';
+    return a;
+  }
+
   function nowCard(state, c) {
     var m = BL.match(state, c.match);
     var card = el('article', 'now-card');
     var head = el('div', 'now-head');
-    head.appendChild(el('span', 'court', 'Court ' + c.num));
+    head.appendChild(courtLink(c.num));
     if (!m) {
       card.classList.add('idle');
       head.appendChild(el('span', 'free', 'frei'));
@@ -382,7 +390,7 @@
       var m = BL.match(state, c.match);
       if (!m && (!showIdle.checked || term)) return;
       if (m && !matches(m, term)) return;
-      cards.push(m && mode === 'field' ? Field.render(m, { court: c.num, short: true }) : nowCard(state, c));
+      cards.push(m && mode === 'field' ? Field.render(m, { court: c.num, short: true, link: true }) : nowCard(state, c));
     });
     // Spielfelder sind zwischengespeichert: nur austauschen, was sich geändert hat
     // (neu eingehängte Elemente würden ihre Animation wiederholen)

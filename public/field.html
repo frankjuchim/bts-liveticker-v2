@@ -14,11 +14,16 @@
   .field-card { border-radius: 14px; }
   .field-head { font-size: clamp(0.9rem, 2vw, 1.4rem); padding: 10px 16px; }
   .field-foot { font-size: clamp(0.9rem, 2vw, 1.3rem); padding: 0 16px 14px; }
+  .back { display: inline-block; margin: 0 0 10px; padding: 6px 14px; border-radius: 8px; background: rgba(255,255,255,0.12);
+    color: #fff; text-decoration: none; font-weight: 600; }
+  .back:hover { background: rgba(255,255,255,0.2); }
+  .back[hidden] { display: none; }
   .idle { color: #fff; text-align: center; padding: 18vh 16px; font-size: clamp(1.1rem, 3vw, 2rem); opacity: 0.8; }
 </style>
 </head>
 <body>
 <main class="wrap">
+  <a class="back" id="back" href="/" hidden>‹ Zurück zum Liveticker</a>
   <div id="stage"></div>
 </main>
 <script src="/live.js"></script>
@@ -28,6 +33,16 @@
   // ?linger=<min> wie bei den Overlays (Standard 5), ?bg=<farbe> für den Hintergrund.
   BL.applyCommonParams();
   var p = BL.params;
+  // Zurück-Knopf nur, wenn man vom Liveticker kommt (als Hallenbildschirm direkt geöffnet: ohne)
+  var back = document.getElementById('back');
+  var fromTicker = false;
+  try { fromTicker = document.referrer && new URL(document.referrer).origin === location.origin; } catch (e) { /* egal */ }
+  if (fromTicker || p.get('zurueck') === '1') {
+    back.hidden = false;
+    back.addEventListener('click', function (e) {
+      if (fromTicker && history.length > 1) { e.preventDefault(); history.back(); }
+    });
+  }
   var nr = p.get('court') || decodeURIComponent(location.pathname.split('/').pop()) || '1';
   var linger = parseFloat(p.get('linger'));
   if (!(linger >= 0)) linger = 5;

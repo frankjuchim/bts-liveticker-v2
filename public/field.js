@@ -72,7 +72,14 @@
   function build(m, opts, prev) {
     var card = el('article', 'field-card ' + m.status);
     var head = el('div', 'field-head');
-    if (opts.court) head.appendChild(el('span', 'court', 'Court ' + opts.court));
+    if (opts.court) {
+      var cl = el(opts.link ? 'a' : 'span', 'court', 'Court ' + opts.court);
+      if (opts.link) {
+        cl.href = '/feld/' + encodeURIComponent(opts.court);
+        cl.title = 'Spielfeld von Court ' + opts.court + ' groß anzeigen';
+      }
+      head.appendChild(cl);
+    }
     head.appendChild(el('span', 'disc', m.name));
     if (m.status === 'live') head.appendChild(el('span', 'badge live', 'Live'));
     else if (m.status === 'called') head.appendChild(el('span', 'badge called', 'Aufruf'));
