@@ -1,29 +1,80 @@
 diff --git a/bts/ticker_conn.js b/bts/ticker_conn.js
-index 3dea153..4cffb32 100644
+index 3dea153..c5144c4 100644
 --- a/bts/ticker_conn.js
 +++ b/bts/ticker_conn.js
-@@ -19,9 +19,20 @@ function craft_court(c) {
+@@ -19,9 +19,55 @@ function craft_court(c) {
  	return utils.pluck(c, ['num', 'match_id', '_id']);
  }
  
-+// Aufschlag und Positionen für den Liveticker (Aufschläger/Rückschläger):
-+// ts = Team 1 schlägt auf, pe = je Team: steht Spieler 1 im rechten (geraden) Feld
++// bts-liveticker-erweiterung v2 – zusätzliche Daten für den Liveticker:
++// Aufschlag/Positionen, Doppel, Vereine, Spieldauer und die nächsten Spiele
 +function craft_service(m) {
 +	return {
 +		ts: (typeof m.network_team1_serving === 'boolean') ? m.network_team1_serving : null,
 +		pe: Array.isArray(m.network_teams_player1_even) ? m.network_teams_player1_even : null,
++		dur: (typeof m.duration_ms === 'number') ? m.duration_ms : null,
 +	};
 +}
 +
++function craft_liveticker(m) {
++	const res = craft_service(m);
++	if (typeof m.setup.is_doubles === 'boolean') res.d = m.setup.is_doubles;
++	(m.setup.teams || []).forEach((t, tidx) => {
++		res['c' + tidx] = (t.players || []).map(p => (p && (p.club || p.nationality)) || '');
++	});
++	return res;
++}
++
++// Die nächsten Spiele: in Vorbereitung zuerst, dann nach geplanter Zeit
++function liveticker_upcoming(app, tournament_key, cb) {
++	app.db.matches.find({ tournament_key }, (err, matches) => {
++		if (err || !Array.isArray(matches)) return cb(undefined);
++		const open = matches.filter(m => {
++			const s = m.setup || {};
++			if (s.now_on_court || m.end_ts || typeof m.team1_won === 'boolean') return false;
++			if (!(s.teams || []).every(t => t && t.players && t.players.length)) return false;
++			return s.state === 'preparation' || s.state === 'scheduled' || (!s.state && s.scheduled_time_str);
++		});
++		const key = m => [m.setup.state === 'preparation' ? 0 : 1, m.setup.scheduled_date || '9', m.setup.scheduled_time_str || '99:99', String(m.setup.match_num || '').padStart(6, '0')].join('|');
++		open.sort((a, b) => (key(a) < key(b) ? -1 : (key(a) > key(b) ? 1 : 0)));
++		cb(open.slice(0, 60).map(m => {
++			const res = { _id: m._id, n: m.setup.event_name + ' ' + m.setup.match_name };
++			m.setup.teams.forEach((t, tidx) => {
++				res['p' + tidx] = t.players.map(p => p.name);
++				res['c' + tidx] = t.players.map(p => (p && (p.club || p.nationality)) || '');
++			});
++			res.t = m.setup.scheduled_time_str || null;
++			res.dt = m.setup.scheduled_date || null;
++			res.st = m.setup.state || null;
++			res.mn = m.setup.match_num || null;
++			return res;
++		}));
++	});
++}
  function craft_match(m) {
  	const res = utils.pluck(m, ['_id']);
  	res.s = m.network_score;
-+	Object.assign(res, craft_service(m));
-+	if (typeof m.setup.is_doubles === 'boolean') res.d = m.setup.is_doubles;
++	Object.assign(res, craft_liveticker(m));
  	res.sf = m.setup.scoring_format;
  	res.n = m.setup.event_name + ' ' + m.setup.match_name;
  	m.setup.teams.forEach((t, tidx) => {
-@@ -127,6 +138,7 @@ class TickerConn {
+@@ -114,9 +160,12 @@ class TickerConn {
+ 				return;
+ 			}
+ 
+-			this.sendmsg({
+-				type: 'tset',
+-				event,
++			liveticker_upcoming(this.app, this.tournament_key, (upcoming) => {
++				if (upcoming) event.upcoming = upcoming;
++				this.sendmsg({
++					type: 'tset',
++					event,
++				});
+ 			});
+ 		});
+ 	}
+@@ -127,6 +176,7 @@ class TickerConn {
  			match: {
  				_id: match._id,
  				s: match.network_score,

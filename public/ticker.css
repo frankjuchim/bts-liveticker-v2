@@ -207,3 +207,102 @@ h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: 
 .viewswitch button { font: inherit; font-size: 0.9rem; padding: 6px 12px; border: 0; background: var(--card); color: var(--text); cursor: pointer; }
 .viewswitch button.on { background: var(--club); color: #fff; }
 .viewswitch button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---- Spielern folgen (follow.js) ---- */
+.pname { cursor: pointer; }
+.pname:hover { text-decoration: underline dotted; text-underline-offset: 3px; }
+.pname.fav::before { content: "★ "; color: #f5b800; }
+.now-card.followed, .game.followed, .up.followed, .field-card.followed { box-shadow: 0 0 0 3px #f5b800; }
+.now-card .club { font-size: 0.72rem; color: rgba(255,255,255,0.72); text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-club { font-size: 0.78rem; color: var(--muted); font-weight: 400; }
+
+.follow-box { background: var(--card); border-radius: 12px; padding: 4px 14px 12px; margin-top: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.fb-head { display: flex; align-items: baseline; gap: 12px; }
+.fb-head h2 { margin: 12px 0 6px; }
+.fb-more { margin-left: auto; color: var(--link); text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+.fb-hint { margin: 0 0 8px; font-size: 0.9rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.chip { font: inherit; font-size: 0.85rem; padding: 4px 10px; border-radius: 999px; border: 1px solid #f5b800; background: rgba(245,184,0,0.12); color: var(--text); cursor: pointer; }
+.chip::before { content: "★ "; color: #f5b800; }
+.chip::after { content: " ×"; color: var(--muted); }
+.chip.club::before { content: "★ Verein: "; }
+.fb-list { display: flex; flex-direction: column; gap: 6px; }
+.fb-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: var(--bg); }
+.fb-info { flex: 1; min-width: 0; }
+.fb-top { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+.fb-court { font-weight: 700; }
+.fb-name { color: var(--muted); font-size: 0.9rem; }
+.fb-vs { font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fb-score { font-variant-numeric: tabular-nums; white-space: nowrap; display: flex; gap: 8px; align-items: baseline; }
+.fb-sets { color: var(--muted); font-size: 0.9rem; white-space: pre; }
+.fb-cur { font-size: 1.15rem; padding: 0 6px; border-radius: 6px; background: var(--card); }
+.fb-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.fb-tools input { flex: 1; min-width: 200px; font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); }
+.fb-tools button { font: inherit; padding: 7px 12px; border-radius: 8px; border: 0; background: var(--club); color: #fff; cursor: pointer; }
+
+/* Als Nächstes */
+.upcoming { display: flex; flex-direction: column; gap: 6px; }
+.up { display: flex; gap: 12px; align-items: center; background: var(--card); border-radius: 10px; padding: 8px 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+.fb-list .up { background: var(--bg); box-shadow: none; }
+.up-when { width: 4.6em; flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.up-time { font-weight: 700; font-variant-numeric: tabular-nums; }
+.up-main { flex: 1; min-width: 0; }
+.up-name { font-size: 0.85rem; color: var(--muted); }
+.up-teams { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+.up-team .club { display: block; font-size: 0.75rem; color: var(--muted); }
+.up-vs { color: var(--muted); }
+@media (max-width: 520px) { .up-teams { flex-direction: column; } .up-vs { display: none; } }
+
+/* Hinweise (Toasts) */
+.toasts { position: fixed; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 8px; z-index: 50; max-width: min(380px, calc(100vw - 24px)); }
+.toast { background: var(--card); color: var(--text); border-left: 5px solid #f5b800; border-radius: 10px; padding: 10px 12px; box-shadow: 0 4px 18px rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 2px; cursor: pointer; animation: toast-in 0.25s ease-out; transition: opacity 0.5s; }
+.toast.out { opacity: 0; }
+.toast span { font-size: 0.9rem; color: var(--muted); }
+@keyframes toast-in { from { transform: translateY(12px); opacity: 0; } }
+
+/* ---- Spieler-Seite (/spieler) ---- */
+.back { color: var(--link); text-decoration: none; font-weight: 600; }
+.tabs { display: flex; gap: 4px; margin: 16px 0 4px; overflow-x: auto; border-bottom: 2px solid var(--line); }
+.tabs button { font: inherit; font-weight: 600; padding: 9px 14px; border: 0; background: none; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; white-space: nowrap; }
+.tabs button.on { color: var(--text); border-bottom-color: var(--club); }
+[data-panel] { margin-top: 14px; }
+.star { font: inherit; font-size: 1.25rem; line-height: 1; padding: 2px 6px; border: 0; background: none; color: var(--muted); cursor: pointer; flex: none; }
+.star.on { color: #f5b800; }
+.pl-cards { display: flex; flex-direction: column; gap: 12px; }
+.pl-card { background: var(--card); border-radius: 12px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.pl-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.pl-who { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.pl-who b { font-size: 1.05rem; }
+.pl-who .muted { font-size: 0.85rem; }
+.pl-status { font-size: 0.8rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+.pl-status.live { background: var(--live); color: #fff; }
+.pl-status.called { background: var(--called); color: #fff; }
+.pl-status.next { background: var(--bg); color: var(--text); border: 1px solid var(--line); }
+.pl-item { display: flex; align-items: center; gap: 10px; padding: 7px 4px; border-top: 1px solid var(--line); }
+.pl-item .badge { width: 8.6em; text-align: center; flex: none; }
+.badge.won { background: #1d7a33; }
+.badge.lost { background: var(--done); }
+.badge.next { background: var(--bg); color: var(--text); border: 1px solid var(--line); }
+.pl-mid { flex: 1; min-width: 0; }
+.pl-event { font-size: 0.8rem; color: var(--muted); }
+.pl-vs { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-score { display: flex; flex-direction: column; align-items: flex-end; font-variant-numeric: tabular-nums; white-space: pre; }
+.pl-score span { font-size: 0.78rem; color: var(--muted); }
+.pl-empty { margin: 4px 0; }
+.pl-rows { display: flex; flex-direction: column; gap: 6px; }
+.pl-row { display: flex; align-items: center; gap: 8px; background: var(--card); border-radius: 10px; padding: 8px 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+.pl-row.sub { box-shadow: none; background: var(--bg); margin: 4px 0 0 28px; }
+.pl-rec { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 700; min-width: 3em; text-align: right; }
+.pl-club summary { list-style: none; cursor: pointer; }
+.pl-club summary::-webkit-details-marker { display: none; }
+.pl-club[open] summary { box-shadow: 0 0 0 2px var(--line); }
+.stat-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.stat { background: var(--card); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.stat b { font-size: 1.8rem; font-variant-numeric: tabular-nums; color: var(--link); }
+.stat-label { font-weight: 700; }
+.stat .muted { font-size: 0.82rem; }
+@media (max-width: 520px) {
+  .pl-item { flex-wrap: wrap; }
+  .pl-item .badge { width: auto; }
+  .pl-score { flex-direction: row; gap: 8px; width: 100%; justify-content: flex-start; padding-left: 4px; }
+}

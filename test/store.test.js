@@ -219,3 +219,37 @@ test('Seitenwahl: Heim links, Wechsel nach jedem Satz und bei 11 im Entscheidung
   assert.strictEqual(left([[21, 8], [15, 21], [11, 7]]), false, '3. Satz ab 11');
   assert.strictEqual(left([[21, 8], [15, 21], [21, 17]]), false, 'Spielende');
 });
+
+test('Erweiterung v2: Vereine, Spieldauer und die nächsten Spiele', () => {
+  const s = store.emptyStore();
+  const live = Object.assign({}, m1, { ts: true, pe: [true, true], d: false, c0: ['TV Metjendorf'], c1: ['BC Oldenburg'], dur: 60000 });
+  store.applyTset(s, event([{ _id: 'c1', num: 1, match_id: 'm1' }], [live], {
+    upcoming: [
+      { _id: 'u1', n: 'HD U19 undefined', p0: ['A A', 'B B'], p1: ['C C', 'D D'], c0: ['X', 'X'], c1: ['Y', 'Y'], t: '14:30', dt: '2026-11-01', st: 'preparation', mn: 7 },
+      { _id: 'u2', n: 'DE', p0: ['E E'], p1: ['F F'], t: '15:00', st: 'scheduled' },
+    ],
+  }), '2026-11-01T10:00:00.000Z');
+  let v = store.view(s);
+  assert.deepStrictEqual(v.matches[0].homeClubs, ['TV Metjendorf']);
+  assert.strictEqual(v.upcoming.length, 2);
+  assert.deepStrictEqual(v.upcoming[0], {
+    id: 'u1', name: 'HD U19', home: ['A A', 'B B'], away: ['C C', 'D D'], homeClubs: ['X', 'X'], awayClubs: ['Y', 'Y'],
+    time: '14:30', date: '2026-11-01', state: 'preparation', num: '7',
+  });
+  // Spieldauer aus BTS (bup), sobald das Spiel beendet ist
+  assert.strictEqual(v.matches[0].duration, null, 'läuft noch');
+  store.applyMatchUpdate(s, { _id: 'm1', s: [[21, 15], [21, 18]], ts: true, pe: [true, true], dur: 1860000 }, '2026-11-01T10:31:00.000Z');
+  assert.strictEqual(store.viewOne(s, 'm1').duration, 1860000);
+  // gespeicherter Stand behält die nächsten Spiele
+  assert.strictEqual(store.view(store.restore(JSON.parse(JSON.stringify(s)))).upcoming.length, 2);
+  // BTS ohne Erweiterung v2 → keine nächsten Spiele
+  store.applyTset(s, event([{ _id: 'c1', num: 1, match_id: 'm1' }], [m1]), 't');
+  assert.strictEqual(store.view(s).upcoming, null);
+});
+
+test('Spieldauer ohne BTS-Erweiterung: vom ersten Spielstand bis Spielende', () => {
+  const s = store.emptyStore();
+  store.applyTset(s, event([{ _id: 'c1', num: 1, match_id: 'm1' }], [Object.assign({}, m1, { s: [[1, 0]] })]), '2026-11-01T10:00:00.000Z');
+  store.applyMatchUpdate(s, { _id: 'm1', s: [[21, 15], [21, 18]] }, '2026-11-01T10:25:00.000Z');
+  assert.strictEqual(store.viewOne(s, 'm1').duration, 25 * 60000);
+});

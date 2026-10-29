@@ -279,6 +279,8 @@ function serveStatic(req, res, pathname) {
   let file = ROUTES[clean];
   if (!file && /^\/court\/[^/]+$/.test(clean)) file = 'court.html';
   if (!file && /^\/feld\/[^/]+$/.test(clean)) file = 'field.html';
+  if (clean === '/ergebnis') file = 'result.html';
+  if (clean === '/spieler') file = 'players.html';
   if (!file) file = clean.replace(/^\/+/, '');
   serveFile(res, file);
 }

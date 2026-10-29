@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spieler – Liveticker</title>
+<link rel="stylesheet" href="/ticker.css">
+<link rel="stylesheet" href="/config.css">
+<link rel="icon" href="{{LOGO}}">
+</head>
+<body>
+<main class="wrap">
+  <div class="brand">
+    <img src="{{LOGO}}" alt="" data-brand-logo>
+    <div><b data-brand="title">{{TITLE}}</b><span data-brand="subtitle">{{SUBTITLE}}</span></div>
+  </div>
+  <header class="event">
+    <div class="t-text">
+      <h1 id="tName">Spieler</h1>
+      <div class="t-meta"><a href="/" class="back">‹ Zum Liveticker</a></div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" data-tab="meine">Meine Spieler</button>
+    <button type="button" data-tab="spieler">Alle Spieler</button>
+    <button type="button" data-tab="vereine">Vereine</button>
+    <button type="button" data-tab="statistik">Statistik</button>
+  </nav>
+
+  <section data-panel="meine">
+    <p class="muted" id="meineHint">Noch niemandem gefolgt. Unter „Alle Spieler“ oder „Vereine“ den Stern antippen – oder im
+      Liveticker auf einen Namen tippen.</p>
+    <div id="meineList" class="pl-cards"></div>
+    <button type="button" class="more" id="notifyBtn" hidden>Benachrichtigungen einschalten</button>
+  </section>
+
+  <section data-panel="spieler" hidden>
+    <div class="tools"><input type="search" id="pq" placeholder="Name oder Verein suchen …" autocomplete="off"></div>
+    <div id="spielerList" class="pl-rows"></div>
+  </section>
+
+  <section data-panel="vereine" hidden>
+    <p class="muted" id="vereineHint" hidden>Vereine gibt es nur, wenn BTS die Liveticker-Erweiterung (v2) hat.</p>
+    <div id="vereineList" class="pl-rows"></div>
+  </section>
+
+  <section data-panel="statistik" hidden>
+    <div id="statTiles" class="stat-tiles"></div>
+  </section>
+
+  <footer class="foot"><span id="conn" class="conn">Verbinde …</span></footer>
+</main>
+
+<script src="/live.js"></script>
+<script src="/follow.js"></script>
+<script>
+(function () {
+  'use strict';
+  BL.applyCommonParams();
+  var el = BL.el;
+  var last = null;
+  var tab = (location.hash || '#meine').slice(1);
+  var pq = document.getElementById('pq');
+
+  // ---- Daten je Spieler aus Spielen und „Als Nächstes“ zusammentragen
+  function collect(state) {
+    var players = {};
+    function rec(name, club) {
+      var p = players[name] || (players[name] = { name: name, club: '', items: [], wins: 0, losses: 0 });
+      if (club && !p.club) p.club = club;
+      return p;
+    }
+    ((state && state.matches) || []).forEach(function (m) {
+      ['home', 'away'].forEach(function (side) {
+        (m[side] || []).forEach(function (n, i) {
+          if (!n) return;
+          var p = rec(n, ((side === 'home' ? m.homeClubs : m.awayClubs) || [])[i]);
+          p.items.push({ m: m, side: side });
+          if (m.status === 'finished') { if (m.winner === side) p.wins++; else p.losses++; }
+        });
+      });
+    });
+    ((state && state.upcoming) || []).forEach(function (u) {
+      ['home', 'away'].forEach(function (side) {
+        (u[side] || []).forEach(function (n, i) {
+          if (!n) return;
+          rec(n, ((side === 'home' ? u.homeClubs : u.awayClubs) || [])[i]).items.push({ u: u, side: side });
+        });
+      });
+    });
+    return players;
+  }
+
+  function other(side) { return side === 'home' ? 'away' : 'home'; }
+  function team(x, side) { return ((x.m || x.u)[side] || []).filter(Boolean).join(' / ') || 'N. N.'; }
+
+  // Was macht der Spieler gerade / als Nächstes?
+  function status(p) {
+    var live = p.items.filter(function (x) { return x.m && (x.m.status === 'live' || x.m.status === 'called'); })[0];
+    if (live) {
+      var split = BL.splitSets(live.m);
+      var sc = split.current ? ' · ' + split.current[live.side] + ':' + split.current[other(live.side)] : '';
+      return { cls: 'live', text: (live.m.status === 'live' ? 'Spielt auf Court ' : 'Aufruf Court ') + live.m.court + sc };
+    }
+    var up = p.items.filter(function (x) { return x.u; })[0];
+    if (up) return { cls: up.u.state === 'preparation' ? 'called' : 'next', text: (up.u.state === 'preparation' ? 'Gleich dran' : 'Als Nächstes') + (up.u.time ? ' · ' + up.u.time + ' Uhr' : '') };
+    return null;
+  }
+
+  function starBtn(on, title, fn) {
+    var b = el('button', 'star' + (on ? ' on' : ''), on ? '★' : '☆');
+    b.type = 'button';
+    b.title = title;
+    b.addEventListener('click', fn);
+    return b;
+  }
+
+  // Eine Zeile im Spielverlauf eines Spielers
+  function itemRow(x, me) {
+    var row = el('div', 'pl-item');
+    var tag;
+    if (x.u) {
+      tag = el('span', 'badge ' + (x.u.state === 'preparation' ? 'called' : 'next'), x.u.time || 'geplant');
+    } else if (x.m.status === 'live' || x.m.status === 'called') {
+      tag = el('span', 'badge live', 'Court ' + x.m.court);
+    } else if (x.m.status === 'finished') {
+      tag = el('span', 'badge ' + (x.m.winner === x.side ? 'won' : 'lost'), x.m.winner === x.side ? 'Sieg' : 'Niederlage');
+    } else {
+      tag = el('span', 'badge done', 'ohne Ergebnis');
+    }
+    row.appendChild(tag);
+    var mid = el('div', 'pl-mid');
+    mid.appendChild(el('div', 'pl-event', (x.m || x.u).name));
+    // im Doppel den Partner nennen (ohne den Spieler selbst)
+    var partner = ((x.m || x.u)[x.side] || []).filter(function (n) { return n && n !== me; }).join(' / ');
+    mid.appendChild(el('div', 'pl-vs', 'gegen ' + team(x, other(x.side)) + (partner ? ' · mit ' + partner : '')));
+    row.appendChild(mid);
+    if (x.m && x.m.sets.length) {
+      var right = el('div', 'pl-score');
+      right.appendChild(el('b', null, x.m.sets.map(function (s) { return s[x.side] + ':' + s[other(x.side)]; }).join('  ')));
+      var meta = [];
+      if (x.m.duration) meta.push(Follow.duration(x.m.duration));
+      if (x.m.finishedAt) meta.push(BL.time(x.m.finishedAt) + ' Uhr');
+      if (meta.length) right.appendChild(el('span', null, meta.join(' · ')));
+      row.appendChild(right);
+    }
+    return row;
+  }
+
+  // Reihenfolge: läuft → gleich/als Nächstes → beendet (neueste zuerst)
+  function ordered(items) {
+    function k(x) {
+      if (x.m && (x.m.status === 'live' || x.m.status === 'called')) return 0;
+      if (x.u) return x.u.state === 'preparation' ? 1 : 2;
+      return 3;
+    }
+    return items.slice().sort(function (a, b) {
+      if (k(a) !== k(b)) return k(a) - k(b);
+      if (a.u && b.u) return ((a.u.date || '') + (a.u.time || '')).localeCompare((b.u.date || '') + (b.u.time || ''));
+      return ((b.m && b.m.finishedAt) || '').localeCompare((a.m && a.m.finishedAt) || '');
+    });
+  }
+
+  function playerCard(p) {
+    var card = el('article', 'pl-card');
+    var head = el('div', 'pl-head');
+    head.appendChild(starBtn(true, 'Nicht mehr folgen', function () { Follow.remove(p.name); }));
+    var who = el('div', 'pl-who');
+    who.appendChild(el('b', null, p.name));
+    var sub = [];
+    if (p.club) sub.push(p.club);
+    if (p.wins + p.losses) sub.push(p.wins + (p.wins === 1 ? ' Sieg' : ' Siege') + ' · ' + p.losses + (p.losses === 1 ? ' Niederlage' : ' Niederlagen'));
+    if (sub.length) who.appendChild(el('span', 'muted', sub.join(' · ')));
+    head.appendChild(who);
+    var st = status(p);
+    if (st) head.appendChild(el('span', 'pl-status ' + st.cls, st.text));
+    card.appendChild(head);
+    var items = ordered(p.items);
+    if (!items.length) card.appendChild(el('p', 'muted pl-empty', 'Noch keine Spiele gefunden.'));
+    items.forEach(function (x) { card.appendChild(itemRow(x, p.name)); });
+    return card;
+  }
+
+  function renderMeine(players) {
+    var list = document.getElementById('meineList');
+    list.replaceChildren();
+    var names = Follow.list();
+    // Spieler gefolgter Vereine kommen dazu
+    Object.keys(players).forEach(function (n) {
+      if (Follow.hasClub(players[n].club) && names.indexOf(n) < 0) names.push(n);
+    });
+    document.getElementById('meineHint').hidden = names.length > 0 || Follow.clubs().length > 0;
+    names.sort(function (a, b) {
+      var sa = status(players[a] || { items: [] }); var sb = status(players[b] || { items: [] });
+      var r = function (s) { return !s ? 3 : s.cls === 'live' ? 0 : s.cls === 'called' ? 1 : 2; };
+      return r(sa) - r(sb) || a.localeCompare(b, 'de');
+    }).forEach(function (n) {
+      list.appendChild(playerCard(players[n] || { name: n, club: '', items: [], wins: 0, losses: 0 }));
+    });
+    var nb = document.getElementById('notifyBtn');
+    nb.hidden = !names.length || !('Notification' in window) || Notification.permission !== 'default';
+  }
+
+  function renderSpieler(players) {
+    var term = pq.value.trim().toLowerCase();
+    var list = document.getElementById('spielerList');
+    list.replaceChildren();
+    var all = Object.keys(players).map(function (n) { return players[n]; })
+      .filter(function (p) { return !term || (p.name + ' ' + p.club).toLowerCase().indexOf(term) >= 0; })
+      .sort(function (a, b) { return a.name.localeCompare(b.name, 'de'); });
+    all.forEach(function (p) {
+      var row = el('div', 'pl-row');
+      row.appendChild(starBtn(Follow.has(p.name), Follow.has(p.name) ? 'Nicht mehr folgen' : 'Folgen', function () { Follow.toggle(p.name); }));
+      var who = el('div', 'pl-who');
+      who.appendChild(el('b', null, p.name));
+      if (p.club) who.appendChild(el('span', 'muted', p.club));
+      row.appendChild(who);
+      var st = status(p);
+      if (st) row.appendChild(el('span', 'pl-status ' + st.cls, st.text));
+      if (p.wins + p.losses) row.appendChild(el('span', 'pl-rec', p.wins + ':' + p.losses));
+      list.appendChild(row);
+    });
+    if (!all.length) list.appendChild(el('p', 'muted', term ? 'Niemand gefunden.' : 'Noch keine Spieler bekannt.'));
+  }
+
+  function renderVereine(players) {
+    var clubs = {};
+    Object.keys(players).forEach(function (n) {
+      var p = players[n];
+      if (!p.club) return;
+      var c = clubs[p.club] || (clubs[p.club] = { name: p.club, players: [], live: 0, wins: 0, losses: 0 });
+      c.players.push(p);
+      c.wins += p.wins;
+      c.losses += p.losses;
+      var st = status(p);
+      if (st && st.cls === 'live') c.live++;
+    });
+    var list = document.getElementById('vereineList');
+    list.replaceChildren();
+    var names = Object.keys(clubs).sort(function (a, b) { return clubs[b].players.length - clubs[a].players.length || a.localeCompare(b, 'de'); });
+    document.getElementById('vereineHint').hidden = names.length > 0;
+    names.forEach(function (cn) {
+      var c = clubs[cn];
+      var box = el('details', 'pl-club');
+      var sum = el('summary', 'pl-row');
+      sum.appendChild(starBtn(Follow.hasClub(cn), Follow.hasClub(cn) ? 'Verein nicht mehr folgen' : 'Verein folgen', function (e) { e.preventDefault(); Follow.toggleClub(cn); }));
+      var who = el('div', 'pl-who');
+      who.appendChild(el('b', null, cn));
+      who.appendChild(el('span', 'muted', c.players.length + ' Spieler · ' + c.wins + (c.wins === 1 ? ' Sieg' : ' Siege') +
+        ' · ' + c.losses + (c.losses === 1 ? ' Niederlage' : ' Niederlagen')));
+      sum.appendChild(who);
+      if (c.live) sum.appendChild(el('span', 'pl-status live', c.live + (c.live === 1 ? ' spielt gerade' : ' spielen gerade')));
+      box.appendChild(sum);
+      c.players.sort(function (a, b) { return a.name.localeCompare(b.name, 'de'); }).forEach(function (p) {
+        var row = el('div', 'pl-row sub');
+        row.appendChild(starBtn(Follow.has(p.name), 'Folgen', function () { Follow.toggle(p.name); }));
+        row.appendChild(el('span', 'pl-who', p.name));
+        var st = status(p);
+        if (st) row.appendChild(el('span', 'pl-status ' + st.cls, st.text));
+        if (p.wins + p.losses) row.appendChild(el('span', 'pl-rec', p.wins + ':' + p.losses));
+        box.appendChild(row);
+      });
+      if (openClubs[cn]) box.open = true;
+      box.addEventListener('toggle', function () { openClubs[cn] = box.open; });
+      list.appendChild(box);
+    });
+  }
+  var openClubs = {};
+
+  // ---- Statistik aus allen beendeten Spielen
+  function renderStats(state, players) {
+    var done = ((state && state.matches) || []).filter(function (m) { return m.status === 'finished'; });
+    var tiles = [];
+    var withDur = done.filter(function (m) { return m.duration; });
+    var total = withDur.reduce(function (a, m) { return a + m.duration; }, 0);
+    var pts = function (m) { return m.sets.reduce(function (a, s) { return a + s.home + s.away; }, 0); };
+    var desc = function (m) { return m.name + ': ' + m.home.filter(Boolean).join(' / ') + ' – ' + m.away.filter(Boolean).join(' / '); };
+    tiles.push({ big: String(done.length), label: 'Spiele beendet' });
+    if (withDur.length) tiles.push({ big: Follow.duration(total), label: 'Spielzeit insgesamt', sub: 'auf allen Courts zusammen' });
+    if (withDur.length) {
+      var longest = withDur.slice().sort(function (a, b) { return b.duration - a.duration; })[0];
+      tiles.push({ big: Follow.duration(longest.duration), label: 'Längstes Spiel', sub: desc(longest) });
+      var shortest = withDur.slice().sort(function (a, b) { return a.duration - b.duration; })[0];
+      tiles.push({ big: Follow.duration(shortest.duration), label: 'Kürzestes Spiel', sub: desc(shortest) });
+    }
+    if (done.length) {
+      var most = done.slice().sort(function (a, b) { return pts(b) - pts(a); })[0];
+      tiles.push({ big: String(pts(most)), label: 'Meiste Punkte in einem Spiel', sub: desc(most) });
+      var three = done.filter(function (m) { return m.sets.length >= 3; }).length;
+      tiles.push({ big: Math.round(three / done.length * 100) + ' %', label: 'Spiele über drei Sätze', sub: three + ' von ' + done.length });
+      var bestSet = null;
+      done.forEach(function (m) { m.sets.forEach(function (s) { if (!bestSet || s.home + s.away > bestSet.s.home + bestSet.s.away) bestSet = { s: s, m: m }; }); });
+      if (bestSet) tiles.push({ big: bestSet.s.home + ':' + bestSet.s.away, label: 'Längster Satz', sub: desc(bestSet.m) });
+    }
+    var top = Object.keys(players).map(function (n) { return players[n]; }).filter(function (p) { return p.wins; })
+      .sort(function (a, b) { return b.wins - a.wins || a.losses - b.losses; })[0];
+    if (top) tiles.push({ big: String(top.wins), label: 'Meiste Siege', sub: top.name + (top.club ? ' · ' + top.club : '') });
+
+    var box = document.getElementById('statTiles');
+    box.replaceChildren();
+    tiles.forEach(function (t) {
+      var d = el('div', 'stat');
+      d.appendChild(el('b', null, t.big));
+      d.appendChild(el('span', 'stat-label', t.label));
+      if (t.sub) d.appendChild(el('span', 'muted', t.sub));
+      box.appendChild(d);
+    });
+    if (!done.length) box.appendChild(el('p', 'muted', 'Noch keine beendeten Spiele.'));
+  }
+
+  function render(state) {
+    last = state;
+    var t = (state && state.tournament) || {};
+    document.getElementById('tName').textContent = t.name ? t.name + ' – Spieler' : 'Spieler';
+    var players = collect(state);
+    renderMeine(players);
+    if (tab === 'spieler') renderSpieler(players);
+    if (tab === 'vereine') renderVereine(players);
+    if (tab === 'statistik') renderStats(state, players);
+    Follow.check(state);
+    var c = document.getElementById('conn');
+    c.textContent = state && state.bts && state.bts.connected ? 'Live verbunden' : 'Keine Verbindung zur Turniersoftware';
+    c.className = 'conn ' + (state && state.bts && state.bts.connected ? 'ok' : 'warn');
+  }
+
+  function showTab(t) {
+    if (['meine', 'spieler', 'vereine', 'statistik'].indexOf(t) < 0) t = 'meine';
+    tab = t;
+    document.querySelectorAll('.tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === t); });
+    document.querySelectorAll('[data-panel]').forEach(function (s) { s.hidden = s.dataset.panel !== t; });
+    if (last) render(last);
+  }
+  document.querySelectorAll('.tabs button').forEach(function (b) {
+    b.addEventListener('click', function () { history.replaceState(null, '', '#' + b.dataset.tab); showTab(b.dataset.tab); });
+  });
+  window.addEventListener('hashchange', function () { showTab(location.hash.slice(1)); });
+  pq.addEventListener('input', function () { if (last) render(last); });
+  document.getElementById('notifyBtn').addEventListener('click', function () { Follow.askNotify(function () { if (last) render(last); }); });
+  Follow.onChange(function () { if (last) render(last); });
+  showTab(tab);
+  BL.connect(render);
+})();
+</script>
+</body>
+</html>

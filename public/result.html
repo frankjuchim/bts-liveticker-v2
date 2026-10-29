@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ergebnis-Einblendung</title>
+<link rel="stylesheet" href="/overlay.css">
+<link rel="stylesheet" href="/config.css">
+</head>
+<body class="result-overlay">
+<div id="stage"></div>
+<script src="/live.js"></script>
+<script>
+  // Ergebnis-Einblendung für den Stream (OBS-Browserquelle, 1920 × 1080).
+  //   Standard      Bauchbinde, sobald ein Spiel endet (nacheinander, je ?dauer Sekunden)
+  //   ?mode=bar     Laufband mit den letzten Ergebnissen
+  //   ?c=1,2        nur Spiele dieser Courts
+  //   ?dauer=12     Sekunden pro Einblendung (Standard 12)
+  //   ?anzahl=8     Ergebnisse im Laufband (Standard 8)
+  //   ?pos=top      oben statt unten
+  //   ?test=1       sofort das letzte Ergebnis zeigen (zum Einrichten)
+  //   ?names=full, ?scale=1.5, ?bg=00ff00 wie bei den anderen Overlays
+  (function () {
+    'use strict';
+    BL.applyCommonParams();
+    var p = BL.params;
+    var el = BL.el;
+    var stage = document.getElementById('stage');
+    var bar = p.get('mode') === 'bar';
+    var courts = (p.get('c') || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    var secs = parseFloat(p.get('dauer')) > 0 ? parseFloat(p.get('dauer')) : 12;
+    var count = parseInt(p.get('anzahl'), 10) > 0 ? parseInt(p.get('anzahl'), 10) : 8;
+    var short = p.get('names') !== 'full';
+    if (p.get('pos') === 'top') document.body.classList.add('top');
+    if (bar) document.body.classList.add('bar');
+
+    function finishedList(state) {
+      return ((state && state.matches) || [])
+        .filter(function (m) { return m.status === 'finished' && m.winner; })
+        .filter(function (m) { return !courts.length || courts.indexOf(String(m.lastCourt)) >= 0; })
+        .sort(function (a, b) { return (b.finishedAt || '').localeCompare(a.finishedAt || ''); });
+    }
+
+    function names(m, side) {
+      return BL.players(m[side], short).join(' / ') || 'N. N.';
+    }
+
+    // Vereine einer Seite (nur mit BTS-Erweiterung v2)
+    function clubs(m, side) {
+      var out = [];
+      ((side === 'home' ? m.homeClubs : m.awayClubs) || []).forEach(function (c) { if (c && out.indexOf(c) < 0) out.push(c); });
+      return out.join(' / ');
+    }
+
+    function setsText(m, winnerFirst) {
+      return m.sets.map(function (s) {
+        var w = winnerFirst && m.winner === 'away' ? [s.away, s.home] : [s.home, s.away];
+        return w[0] + ':' + w[1];
+      }).join('  ');
+    }
+
+    // ---- Bauchbinde
+    var queue = [];
+    var seen = null;
+    var busy = false;
+
+    function card(m) {
+      var loser = m.winner === 'home' ? 'away' : 'home';
+      var box = el('div', 'lower');
+      var head = el('div', 'lower-head');
+      head.appendChild(el('span', 'tag', m.name));
+      if (m.lastCourt) head.appendChild(el('span', null, 'Court ' + m.lastCourt));
+      head.appendChild(el('span', 'state done', 'Ergebnis'));
+      box.appendChild(head);
+      var body = el('div', 'lower-body');
+      var win = el('div', 'lower-win');
+      win.appendChild(el('span', 'lower-names', names(m, m.winner)));
+      if (clubs(m, m.winner)) win.appendChild(el('span', 'lower-club', clubs(m, m.winner)));
+      win.appendChild(el('span', 'lower-label', 'gewinnt'));
+      body.appendChild(win);
+      var sc = el('div', 'lower-score');
+      sc.appendChild(el('b', null, Math.max(m.setsWon[0], m.setsWon[1]) + ':' + Math.min(m.setsWon[0], m.setsWon[1])));
+      sc.appendChild(el('span', null, setsText(m, true)));
+      body.appendChild(sc);
+      var lose = el('div', 'lower-lose');
+      lose.appendChild(el('span', 'lower-label', 'gegen'));
+      lose.appendChild(el('span', null, names(m, loser)));
+      if (clubs(m, loser)) lose.appendChild(el('span', 'lower-club', clubs(m, loser)));
+      body.appendChild(lose);
+      box.appendChild(body);
+      return box;
+    }
+
+    function next() {
+      if (busy || !queue.length) return;
+      busy = true;
+      var c = card(queue.shift());
+      stage.replaceChildren(c);
+      requestAnimationFrame(function () { c.classList.add('in'); });
+      setTimeout(function () { c.classList.remove('in'); }, secs * 1000);
+      setTimeout(function () { stage.replaceChildren(); busy = false; next(); }, secs * 1000 + 700);
+    }
+
+    function popup(state) {
+      var list = finishedList(state);
+      if (!seen) {
+        // erster Stand: Bisheriges nicht einblenden (außer ?test=1)
+        seen = {};
+        list.forEach(function (m) { seen[m.id] = true; });
+        if (p.get('test') === '1' && list[0]) { queue.push(list[0]); next(); }
+        return;
+      }
+      list.slice().reverse().forEach(function (m) {
+        if (seen[m.id]) return;
+        seen[m.id] = true;
+        queue.push(m);
+      });
+      next();
+    }
+
+    // ---- Laufband
+    var lastKey = '';
+    function ticker(state) {
+      var list = finishedList(state).slice(0, count);
+      var key = list.map(function (m) { return m.id; }).join('|');
+      if (key === lastKey) return;
+      lastKey = key;
+      if (!list.length) { stage.replaceChildren(); return; }
+      var wrap = el('div', 'band');
+      wrap.appendChild(el('span', 'band-tag', 'Ergebnisse'));
+      var view = el('div', 'band-view');
+      var track = el('div', 'band-track');
+      // doppelt, damit das Band nahtlos weiterläuft
+      for (var k = 0; k < 2; k++) {
+        list.forEach(function (m) {
+          var it = el('span', 'band-item');
+          it.appendChild(el('b', null, m.name + ':'));
+          it.appendChild(document.createTextNode(' ' + names(m, m.winner) + ' – ' + names(m, m.winner === 'home' ? 'away' : 'home') + ' '));
+          it.appendChild(el('b', null, Math.max(m.setsWon[0], m.setsWon[1]) + ':' + Math.min(m.setsWon[0], m.setsWon[1])));
+          it.appendChild(document.createTextNode(' (' + setsText(m, true).replace(/ {2}/g, ', ') + ')'));
+          track.appendChild(it);
+        });
+      }
+      view.appendChild(track);
+      wrap.appendChild(view);
+      stage.replaceChildren(wrap);
+      // Geschwindigkeit an die Länge anpassen (ca. 90 px pro Sekunde)
+      requestAnimationFrame(function () {
+        track.style.animationDuration = Math.max(20, track.scrollWidth / 2 / 90) + 's';
+      });
+    }
+
+    BL.connect(bar ? ticker : popup);
+  })();
+</script>
+</body>
+</html>

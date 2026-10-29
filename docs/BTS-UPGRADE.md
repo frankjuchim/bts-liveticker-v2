@@ -1,30 +1,45 @@
-# BTS-Erweiterung: Aufschläger und Rückschläger
+# BTS-Erweiterung für den Liveticker
 
-Das unveränderte BTS schickt dem Ticker nur den Spielstand. Wer aufschlägt und wo die
-Spieler stehen, weiß BTS aber bereits (von der Zähl-App bup). Diese Erweiterung schickt
-diese Angaben mit, damit der Liveticker
+Das unveränderte BTS schickt dem Ticker nur die Spiele auf den Courts mit ihrem Spielstand.
+Vieles mehr weiß BTS aber bereits. Diese Erweiterung (Version 2) schickt es mit, damit der
+Liveticker zusätzlich
 
-- beim **Aufschläger** einen Punkt zeigt (Einzel und Doppel) und
-- im **Doppel** den **Rückschläger** unterstreicht.
+- beim **Aufschläger** einen Punkt zeigt und im **Doppel** den **Rückschläger** unterstreicht,
+  inklusive **Spielfeld-Ansicht** wie in bup,
+- die **Vereine** der Spieler anzeigt (sonst die Nation) – auch zum Folgen ganzer Vereine,
+- die **Spieldauer** aus bup anzeigt (Ergebnisse, Statistik),
+- **„Als Nächstes“** zeigt: die Spiele in Vorbereitung und die geplanten Spiele mit Uhrzeit –
+  auch auf der Seite „Meine Spieler“ und für Hinweise „Gleich dran“.
 
-Ohne Erweiterung funktioniert der Liveticker ganz normal, nur ohne diese Markierungen.
+Ohne Erweiterung funktioniert der Liveticker ganz normal, nur ohne diese Angaben (die
+Spieldauer schätzt er dann selbst vom ersten Punkt bis zum Spielende).
 
 ## Was geändert wird
 
-Nur die Datei `bts/ticker_conn.js`, 12 Zeilen. Zusätzlich gesendet werden:
+Nur die Datei `bts/ticker_conn.js` (gut 50 Zeilen). Zusätzlich gesendet werden:
 
-| Feld | Bedeutung | Quelle in BTS |
-| --- | --- | --- |
-| `ts` | Team 1 schlägt auf | `network_team1_serving` |
-| `pe` | je Team: steht Spieler 1 im rechten (geraden) Feld | `network_teams_player1_even` |
-| `d` | Doppel | `setup.is_doubles` |
+| Feld | Bedeutung | Quelle in BTS | Nachricht |
+| --- | --- | --- | --- |
+| `ts` | Team 1 schlägt auf | `network_team1_serving` | `tset`, `tupdate_match` |
+| `pe` | je Team: steht Spieler 1 im rechten (geraden) Feld | `network_teams_player1_even` | `tset`, `tupdate_match` |
+| `d` | Doppel | `setup.is_doubles` | `tset` |
+| `c0`, `c1` | Verein je Spieler (sonst Nation) | `setup.teams[].players[].club` / `.nationality` | `tset` |
+| `dur` | Spieldauer in ms | `duration_ms` (von bup) | `tset`, `tupdate_match` |
+| `upcoming` | bis zu 60 nächste Spiele: Name, Spieler, Vereine, Planzeit `t`/`dt`, Zustand `st`, Spielnummer `mn` | Spiele mit `setup.state` `preparation` oder `scheduled` | `tset` |
 
-Der Liveticker berechnet daraus Aufschläger und Rückschläger genauso wie BTS selbst
+„Als Nächstes“ enthält nur Spiele, die nicht auf einem Court liegen, noch kein Ergebnis haben
+und bei denen beide Seiten feststehen – zuerst die in Vorbereitung, dann nach Planzeit. Die
+Liste wird bei jeder Court-Änderung neu geschickt.
+
+Der Liveticker berechnet Aufschläger und Rückschläger genauso wie BTS selbst
 (`determine_server`/`determine_receiver` in `bts/bupws_v2.js`). Am Zählen, an der
 Verbindung zu BTP und an den Anzeigen in der Halle ändert sich nichts.
 
 Getestet mit `tlehr/bts` (`master`, `feat/bupws_v2`, `perf/server-responsiveness`) und
-`phihag/bts` (`master`).
+`phihag/bts` (`master`) – jeweils neu eingespielt und als Upgrade von der ersten Version.
+
+**Schon die erste Version (nur Aufschlag) installiert?** Einfach denselben Befehl wie unten
+noch einmal ausführen – das Skript ersetzt sie durch die neue Version.
 
 ## Wo wird was gemacht?
 
@@ -41,7 +56,8 @@ verschiedenen Proxmox-Servern). Die Erweiterung gehört **zu BTS**:
 ```
 
 Am Liveticker ist nichts zu tun – er erkennt die Erweiterung automatisch. Ob sie aktiv ist,
-zeigt `http://<Liveticker>/admin` in der Zeile **Aufschlaganzeige**.
+zeigt `http://<Liveticker>/admin` in der Zeile **BTS-Erweiterung** („aktiv (v2)“ bzw. „ältere
+Version“).
 
 ## Einspielen – Schritt für Schritt
 
@@ -81,18 +97,20 @@ curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/
 (Fehlt `curl`: `apt-get install -y curl`.) Das Skript
 
 1. prüft, dass es ein BTS-git-Verzeichnis ohne offene Änderungen ist,
-2. fügt die Erweiterung ein und prüft, dass das Ergebnis gültiges JavaScript ist,
-3. legt dafür einen **lokalen Commit** an („Ticker: Aufschläger/Rückschläger senden“),
-4. stellt `git pull` auf Rebase um (`pull.rebase`, `rebase.autoStash`),
-5. startet den Dienst `bts` neu (falls vorhanden – sonst BTS bitte selbst neu starten).
+2. ersetzt eine ältere Version der Erweiterung (holt dazu die Originaldatei aus dem Original-Repo),
+3. fügt die Erweiterung ein und prüft, dass das Ergebnis gültiges JavaScript ist,
+4. legt dafür einen **lokalen Commit** an („Ticker-Erweiterung für bts-liveticker (v2) …“),
+5. stellt `git pull` auf Rebase um (`pull.rebase`, `rebase.autoStash`),
+6. startet den Dienst `bts` neu (falls vorhanden – sonst BTS bitte selbst neu starten).
 
 Mehrfaches Ausführen schadet nicht („bereits eingespielt“).
 
 ### 4. Prüfen
 
 BTS verbindet sich nach dem Neustart von selbst wieder mit dem Liveticker. Sobald ein Spiel
-auf einem Court liegt, zeigt `http://<Liveticker>/admin` bei **Aufschlaganzeige**
-„aktiv“, und beim nächsten Punkt erscheinen Punkt und Unterstreichung.
+auf einem Court liegt, zeigt `http://<Liveticker>/admin` bei **BTS-Erweiterung**
+„aktiv (v2)“: Beim nächsten Punkt erscheinen Punkt und Unterstreichung, die Vereine stehen
+bei den Spielern und im Liveticker gibt es den Bereich „Als Nächstes“.
 
 ## Was passiert bei BTS-Updates?
 
@@ -104,7 +122,8 @@ wieder obendrauf. `git status` zeigt dann z. B.:
 Your branch is ahead of 'origin/feat/bupws_v2' by 1 commit.
 ```
 
-Das ist richtig so (Original + Erweiterung). Den Hinweis „use git push“ bitte ignorieren.
+(bzw. „by 2 commits“ nach einem Upgrade von der ersten Version). Das ist richtig so
+(Original + Erweiterung). Den Hinweis „use git push“ bitte ignorieren.
 
 - **Übernimmt BTS die Änderung selbst**, fällt der lokale Commit beim Pull von allein weg.
 - **Ändert BTS genau diese Stellen**, bricht `git pull` mit einem Konflikt ab, ohne etwas
@@ -134,8 +153,11 @@ nicht – dann das Skript `bts-patch/ticker-aufschlag.js` nehmen):
 ```sh
 node ticker-aufschlag.js bts/ticker_conn.js
 node --check bts/ticker_conn.js
-git commit -am "Ticker: Aufschläger/Rückschläger senden"
+git commit -am "Ticker-Erweiterung für bts-liveticker (v2)"
 ```
+
+Das Skript erwartet die Originaldatei; eine ältere Version der Erweiterung vorher entfernen
+(`git checkout @{upstream} -- bts/ticker_conn.js`).
 
 Läuft BTS **ohne git** (z. B. aus einem ZIP oder Docker-Image), `ticker-aufschlag.js` genauso
 auf `bts/ticker_conn.js` anwenden – dann muss die Erweiterung nach jedem BTS-Update erneut

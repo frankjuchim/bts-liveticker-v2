@@ -91,7 +91,7 @@
       <dt>Letzte Daten</dt><dd id="lastMsg">–</dd>
       <dt>Courts</dt><dd id="courtCount">–</dd>
       <dt>Spiele</dt><dd id="matchCount">–</dd>
-      <dt>Aufschlaganzeige</dt><dd id="extState">–</dd>
+      <dt>BTS-Erweiterung</dt><dd id="extState">–</dd>
       <dt>Adresse für BTS</dt><dd><code id="wsUrl"></code></dd>
     </dl>
   </section>
@@ -102,7 +102,8 @@
       Ticker-Adresse <code class="wsUrl"></code> und Ticker-Passwort
       <code class="secret" id="tickerPw" title="Klicken zum Anzeigen">•••••••• (anzeigen)</code> eintragen
       (Einstellung <code>TICKER_PASSWORD</code> der Konfiguration).</p>
-    <p style="margin-bottom:0"><b>2. Optional: Aufschläger/Rückschläger</b> – dafür braucht BTS eine kleine Erweiterung.
+    <p style="margin-bottom:0"><b>2. Optional: Aufschläger/Rückschläger, Vereine, Spieldauer, „Als Nächstes“</b> – dafür braucht BTS eine kleine Erweiterung
+      (derselbe Befehl aktualisiert auch eine ältere Version).
       Sie wird <b>auf dem Rechner/Container eingespielt, auf dem BTS läuft</b> (nicht hier im Liveticker):
       dort im BTS-Verzeichnis ausführen:</p>
     <pre class="cmd">curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/bts-patch/apply.sh | bash</pre>
@@ -231,8 +232,16 @@
     document.getElementById('tName').textContent = (state && state.tournament.name) || '–';
     document.getElementById('lastMsg').textContent = fmt(b && b.lastMessageAt);
     var ext = document.getElementById('extState');
-    if (state && state.btsExtension === true) { ext.textContent = 'aktiv (BTS-Erweiterung erkannt)'; ext.className = 'ok'; }
-    else if (state && state.btsExtension === false) { ext.textContent = 'nicht aktiv – BTS-Erweiterung fehlt (siehe „Einrichtung in BTS“, Schritt 2)'; ext.className = 'bad'; }
+    if (state && state.btsExtension === true && state.upcoming) {
+      ext.textContent = 'aktiv (v2): Aufschlag, Vereine, Spieldauer, Als Nächstes';
+      ext.className = 'ok';
+    } else if (state && state.btsExtension === true) {
+      ext.textContent = 'ältere Version (nur Aufschlag) – für Vereine, Spieldauer und „Als Nächstes“ den Befehl unter „Einrichtung in BTS“, Schritt 2, erneut ausführen';
+      ext.className = 'bad';
+    } else if (state && state.btsExtension === false) {
+      ext.textContent = 'nicht aktiv – BTS-Erweiterung fehlt (siehe „Einrichtung in BTS“, Schritt 2)';
+      ext.className = 'bad';
+    }
     else { ext.textContent = 'noch nicht erkennbar – sobald ein Spiel auf einem Court liegt'; ext.className = 'muted'; }
     var courts = (state && state.courts) || [];
     var all = (state && state.matches) || [];
@@ -252,6 +261,9 @@
       ul.appendChild(link('/courts?layout=split&c=' + courts[0].num + ',' + courts[1].num, 'Overlay: zwei Courts links/rechts'));
     }
     ul.appendChild(link('/?view=field', 'Liveticker in der Spielfeld-Ansicht'));
+    ul.appendChild(link('/spieler', 'Spieler-Seite: Meine Spieler, alle Spieler, Vereine, Statistik'));
+    ul.appendChild(link('/ergebnis', 'Overlay: Ergebnis-Einblendung bei Spielende (Test: /ergebnis?test=1)'));
+    ul.appendChild(link('/ergebnis?mode=bar', 'Overlay: Laufband mit den letzten Ergebnissen'));
     courts.forEach(function (c) {
       ul.appendChild(link('/court/' + encodeURIComponent(c.num), 'Overlay Court ' + c.num));
     });

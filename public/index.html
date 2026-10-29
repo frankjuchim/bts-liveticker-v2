@@ -32,10 +32,32 @@
     </div>
   </div>
 
+  <section class="follow-box" id="followBox">
+    <div class="fb-head">
+      <h2>Meine Spieler</h2>
+      <a class="fb-more" href="/spieler">Übersicht ›</a>
+    </div>
+    <p class="muted fb-hint" id="fbHint">Auf einen Namen tippen, um dem Spieler zu folgen – seine Spiele stehen dann hier,
+      und du bekommst einen Hinweis, wenn er aufgerufen wird oder sein Spiel endet.</p>
+    <div class="chips" id="fbChips"></div>
+    <div class="fb-list" id="fbList"></div>
+    <div class="fb-tools">
+      <input type="search" id="fbAdd" list="fbNames" placeholder="Spieler hinzufügen …" autocomplete="off">
+      <datalist id="fbNames"></datalist>
+      <button type="button" id="fbNotify" hidden>Benachrichtigungen einschalten</button>
+    </div>
+  </section>
+
   <section>
     <h2>Auf den Courts</h2>
     <div class="now" id="now"></div>
     <p class="empty muted" id="nowEmpty" hidden>Gerade läuft kein Spiel.</p>
+  </section>
+
+  <section id="upSec" hidden>
+    <h2>Als Nächstes</h2>
+    <div class="upcoming" id="upList"></div>
+    <button class="more" id="upMore" hidden>Weitere Spiele anzeigen</button>
   </section>
 
   <section>
@@ -52,6 +74,7 @@
 
 <script src="/live.js"></script>
 <script src="/field.js"></script>
+<script src="/follow.js"></script>
 <script>
 (function () {
   'use strict';
@@ -65,9 +88,11 @@
   try { showIdle.checked = localStorage.getItem('showIdle') === '1'; } catch (e) { /* egal */ }
   q.value = BL.params.get('q') || '';
 
+  var upLimit = 8;
+
   function matches(m, term) {
     if (!term) return true;
-    var hay = [m.name].concat(m.home, m.away).join(' ').toLowerCase();
+    var hay = [m.name].concat(m.home, m.away, m.homeClubs || [], m.awayClubs || []).join(' ').toLowerCase();
     return term.split(/\s+/).every(function (t) { return hay.indexOf(t) >= 0; });
   }
 
@@ -96,7 +121,7 @@
           var who = el('div', 'who');
           var names = BL.players(lastM[side]);
           if (!names.length) who.appendChild(el('span', 'names muted', 'N. N.'));
-          names.forEach(function (n) { who.appendChild(el('span', 'names', n)); });
+          names.forEach(function (n) { who.appendChild(Follow.nameEl('span', 'names', n)); });
           row.appendChild(who);
           lastM.sets.forEach(function (st) {
             row.appendChild(el('span', 'set' + (st.winner === side ? ' won' : ''), String(st[side])));
@@ -109,6 +134,7 @@
     head.appendChild(el('span', 'disc', m.name));
     head.appendChild(badge(m));
     card.appendChild(head);
+    if (Follow.involves(m)) card.classList.add('followed');
 
     var split = BL.splitSets(m);
     ['home', 'away'].forEach(function (side) {
@@ -116,7 +142,15 @@
       var who = el('div', 'who');
       var names = BL.playerSpans(m, side);
       if (!names.length) who.appendChild(el('span', 'names muted', 'N. N.'));
-      names.forEach(function (n) { n.classList.add('names'); who.appendChild(n); });
+      names.forEach(function (n) {
+        var name = n.textContent;
+        n.classList.add('names', 'pname');
+        if (Follow.has(name)) n.classList.add('fav');
+        n.dataset.name = name;
+        who.appendChild(n);
+      });
+      var cl = Follow.clubLine(m, side);
+      if (cl) who.appendChild(el('span', 'club', cl));
       row.appendChild(who);
       split.done.forEach(function (s) {
         row.appendChild(el('span', 'set' + (s.winner === side ? ' won' : ''), String(s[side])));
@@ -134,7 +168,9 @@
     var meta = [];
     if (m.lastCourt) meta.push('Court ' + m.lastCourt);
     if (m.finishedAt) meta.push(BL.time(m.finishedAt) + ' Uhr');
+    if (m.duration) meta.push(Follow.duration(m.duration));
     title.appendChild(el('span', 'g-meta', meta.join(' · ')));
+    if (Follow.involves(m)) row.classList.add('followed');
     if (m.status === 'ended') title.appendChild(el('span', 'badge done', 'ohne Ergebnis'));
     row.appendChild(title);
 
@@ -143,7 +179,9 @@
       var p = el('div', 'g-side ' + side + (m.winner === side ? ' winner' : ''));
       var names = BL.players(m[side]);
       if (!names.length) p.appendChild(el('span', 'muted', 'N. N.'));
-      names.forEach(function (n) { p.appendChild(el('span', 'g-player', n)); });
+      names.forEach(function (n) { p.appendChild(Follow.nameEl('span', 'g-player', n)); });
+      var cl = Follow.clubLine(m, side);
+      if (cl) p.appendChild(el('span', 'g-club', cl));
       body.appendChild(p);
     });
     var res = el('div', 'g-result');
@@ -156,8 +194,120 @@
     return row;
   }
 
+  // Ein kommendes Spiel: Zeit bzw. „in Vorbereitung“, Disziplin, Spieler mit Vereinen
+  function upRow(u) {
+    var row = el('article', 'up ' + u.state + (Follow.involves(u) ? ' followed' : ''));
+    var when = el('div', 'up-when');
+    if (u.state === 'preparation') when.appendChild(el('span', 'badge called', 'Gleich'));
+    if (u.time) when.appendChild(el('span', 'up-time', u.time));
+    row.appendChild(when);
+    var mid = el('div', 'up-main');
+    mid.appendChild(el('div', 'up-name', u.name + (u.num ? ' · Spiel ' + u.num : '')));
+    var teams = el('div', 'up-teams');
+    ['home', 'away'].forEach(function (side, i) {
+      var t = el('div', 'up-team');
+      var names = BL.players(u[side]);
+      if (!names.length) t.appendChild(el('span', 'muted', 'N. N.'));
+      names.forEach(function (n, j) {
+        if (j) t.appendChild(document.createTextNode(' / '));
+        t.appendChild(Follow.nameEl('span', null, n));
+      });
+      var cl = Follow.clubLine(u, side);
+      if (cl) t.appendChild(el('span', 'club', cl));
+      teams.appendChild(t);
+      if (!i) teams.appendChild(el('span', 'up-vs', '–'));
+    });
+    mid.appendChild(teams);
+    row.appendChild(mid);
+    return row;
+  }
+
+  // „Meine Spieler“: gefolgte Spieler als Chips, darunter ihre Spiele
+  function renderFollow(state) {
+    var names = Follow.list();
+    var clubsF = Follow.clubs();
+    var any = names.length + clubsF.length > 0;
+    document.getElementById('fbHint').hidden = any;
+    var chips = document.getElementById('fbChips');
+    chips.replaceChildren();
+    names.forEach(function (n) {
+      var c = el('button', 'chip', n);
+      c.type = 'button';
+      c.title = 'Nicht mehr folgen';
+      c.addEventListener('click', function () { Follow.remove(n); });
+      chips.appendChild(c);
+    });
+    clubsF.forEach(function (n) {
+      var c = el('button', 'chip club', n);
+      c.type = 'button';
+      c.title = 'Verein nicht mehr folgen';
+      c.addEventListener('click', function () { Follow.toggleClub(n); });
+      chips.appendChild(c);
+    });
+
+    // Einträge: laufend/aufgerufen → gleich dran → geplant → zuletzt beendet
+    var items = [];
+    var all = (state && state.matches) || [];
+    all.forEach(function (m) {
+      if (!Follow.involves(m)) return;
+      if (m.status === 'live' || m.status === 'called') items.push({ k: 0, m: m });
+      else if (m.status === 'finished' || m.status === 'ended') items.push({ k: 3, m: m, t: m.finishedAt || '' });
+    });
+    ((state && state.upcoming) || []).forEach(function (u) {
+      if (Follow.involves(u)) items.push({ k: u.state === 'preparation' ? 1 : 2, u: u, t: (u.date || '') + (u.time || '') });
+    });
+    items.sort(function (a, b) {
+      if (a.k !== b.k) return a.k - b.k;
+      return a.k === 3 ? (b.t || '').localeCompare(a.t || '') : (a.t || '').localeCompare(b.t || '');
+    });
+    var list = document.getElementById('fbList');
+    list.replaceChildren();
+    items.slice(0, 6).forEach(function (it) {
+      if (it.u) return list.appendChild(upRow(it.u));
+      var m = it.m;
+      var row = el('article', 'fb-item ' + m.status);
+      var info = el('div', 'fb-info');
+      var top = el('div', 'fb-top');
+      if (m.status === 'live' || m.status === 'called') {
+        top.appendChild(el('span', 'badge ' + (m.status === 'live' ? 'live' : 'called'), m.status === 'live' ? 'Live' : 'Aufruf'));
+        top.appendChild(el('span', 'fb-court', 'Court ' + m.court));
+      } else {
+        top.appendChild(el('span', 'badge done', 'Beendet'));
+      }
+      top.appendChild(el('span', 'fb-name', m.name));
+      info.appendChild(top);
+      info.appendChild(el('div', 'fb-vs', m.home.filter(Boolean).join(' / ') + ' – ' + m.away.filter(Boolean).join(' / ')));
+      row.appendChild(info);
+      // abgeschlossene Sätze klein, laufender Satz hervorgehoben
+      var split = BL.splitSets(m);
+      var score = el('div', 'fb-score');
+      score.appendChild(el('span', 'fb-sets', split.done.map(function (st) { return st.home + ':' + st.away; }).join('  ')));
+      if (split.current) score.appendChild(el('b', 'fb-cur', split.current.home + ':' + split.current.away));
+      else if (!split.done.length) score.appendChild(el('span', null, '–'));
+      row.appendChild(score);
+      list.appendChild(row);
+    });
+    if (any && !items.length) list.appendChild(el('p', 'muted', 'Gerade keine Spiele deiner Spieler.'));
+
+    // Namensvorschläge für „Spieler hinzufügen“
+    var known = {};
+    all.concat((state && state.upcoming) || []).forEach(function (m) {
+      (m.home || []).concat(m.away || []).forEach(function (n) { if (n) known[n] = true; });
+    });
+    var dl = document.getElementById('fbNames');
+    var opts = Object.keys(known).sort(function (a, b) { return a.localeCompare(b, 'de'); });
+    if (dl.dataset.key !== opts.join('|')) {
+      dl.dataset.key = opts.join('|');
+      dl.replaceChildren.apply(dl, opts.map(function (n) { var o = el('option'); o.value = n; return o; }));
+    }
+    var nb = document.getElementById('fbNotify');
+    nb.hidden = !any || !('Notification' in window) || Notification.permission !== 'default';
+  }
+
   function render(state) {
     last = state;
+    renderFollow(state);
+    Follow.check(state);
     var t = (state && state.tournament) || {};
     var term = q.value.trim().toLowerCase();
 
@@ -211,6 +361,18 @@
     });
     while (now.children.length > cards.length) now.removeChild(now.lastChild);
     document.getElementById('nowEmpty').hidden = now.children.length > 0;
+
+    // Als Nächstes (nur mit BTS-Erweiterung v2)
+    var up = (state && state.upcoming) || null;
+    document.getElementById('upSec').hidden = !up;
+    if (up) {
+      var ups = up.filter(function (u) { return matches(u, term); });
+      var ul = document.getElementById('upList');
+      ul.replaceChildren();
+      ups.slice(0, upLimit).forEach(function (u) { ul.appendChild(upRow(u)); });
+      if (!ups.length) ul.appendChild(el('p', 'empty muted', 'Keine geplanten Spiele.'));
+      document.getElementById('upMore').hidden = ups.length <= upLimit;
+    }
 
     // Ergebnisse: zuletzt beendete zuerst
     var results = all
@@ -278,6 +440,19 @@
     rerender();
   });
   document.getElementById('more').addEventListener('click', function () { limit += 30; rerender(); });
+  document.getElementById('upMore').addEventListener('click', function () { upLimit += 20; rerender(); });
+  Follow.onChange(rerender);
+  var fbAdd = document.getElementById('fbAdd');
+  function addFollow() {
+    var v = fbAdd.value.trim();
+    if (v && !Follow.has(v)) Follow.toggle(v);
+    fbAdd.value = '';
+  }
+  fbAdd.addEventListener('change', addFollow);
+  fbAdd.addEventListener('keydown', function (e) { if (e.key === 'Enter') addFollow(); });
+  document.getElementById('fbNotify').addEventListener('click', function () {
+    Follow.askNotify(function () { rerender(); });
+  });
   setInterval(updateConn, 5000);
 
   BL.connect(render);

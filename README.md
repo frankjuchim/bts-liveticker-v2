@@ -5,8 +5,12 @@
 
 - Liveticker für Zuschauer: alle Courts mit Spielstand, Ergebnisliste, Suche nach Spieler/Disziplin
 - Transparente Overlays für den Stream, einzeln pro Court oder mehrere Courts auf einmal
-- Aufschläger (Punkt) und im Doppel Rückschläger (unterstrichen) – mit einer kleinen
-  [BTS-Erweiterung](docs/BTS-UPGRADE.md), die **auf der BTS-Maschine** eingespielt wird
+- **Spielern und Vereinen folgen:** antippen, oben „Meine Spieler“, Hinweise bei Aufruf,
+  „Gleich dran“ und Spielende; eigene Seite `/spieler` mit allen Spielern, Vereinen und Statistik
+- **Ergebnis-Einblendung** für den Stream (Bauchbinde bei Spielende oder Laufband)
+- Mit einer kleinen [BTS-Erweiterung](docs/BTS-UPGRADE.md), die **auf der BTS-Maschine**
+  eingespielt wird: Aufschläger/Rückschläger, Spielfeld-Ansicht wie in bup, **Vereine**,
+  **Spieldauer** und **„Als Nächstes“** (Spiele in Vorbereitung und geplante Spiele)
 - Titel, Farbe und Logo im Admin-Panel einstellbar; Turniername und Turnierlogo kommen aus BTS
 - Keine Datenbank, keine Cloud: Node.js + eine JSON-Datei
 
@@ -18,7 +22,8 @@
 ```
 
 Der Server spricht dasselbe Ticker-Protokoll wie der Ticker aus dem BTS-Repo. BTS muss
-**nicht** geändert werden – nur für die Aufschlaganzeige gibt es eine optionale Erweiterung.
+**nicht** geändert werden – für Aufschlag, Vereine, Spieldauer und „Als Nächstes“ gibt es eine
+optionale Erweiterung.
 
 ## Installation auf Proxmox
 
@@ -193,7 +198,8 @@ curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/
 
 Schritt für Schritt (wie man auf die BTS-Maschine kommt, wo das BTS-Verzeichnis liegt, was
 bei BTS-Updates passiert): **[docs/BTS-UPGRADE.md](docs/BTS-UPGRADE.md)**.
-`/admin` zeigt unter „Aufschlaganzeige“, ob die Erweiterung aktiv ist.
+`/admin` zeigt unter „BTS-Erweiterung“, ob sie aktiv ist („v2“ oder „ältere Version“ – dann
+den Befehl erneut ausführen, er aktualisiert).
 
 ## Von außen erreichbar machen
 
@@ -229,6 +235,8 @@ zusehen, braucht es eine öffentliche Adresse mit HTTPS, z. B.:
 | `/court/<nr>` | Overlay für einen Court (transparenter Hintergrund) |
 | `/courts` | Overlay mehrerer Courts (Standard: alle belegten untereinander) |
 | `/?view=field` | Liveticker in der **Spielfeld-Ansicht** (wie in bup, umschaltbar auf der Seite) |
+| `/spieler` | **Meine Spieler**, alle Spieler, Vereine, Statistik (nach dem Vorbild des EM-Tickers) |
+| `/ergebnis` | Overlay: Bauchbinde bei Spielende (`?mode=bar` Laufband, `?test=1` zum Einrichten) |
 | `/feld/<nr>` | Großes Spielfeld eines Courts, z. B. für einen Bildschirm in der Halle |
 | `/admin` | Mit Passwort: Verbindungsstatus, Overlay-Links, Erscheinungsbild/Logo/Link, Ergebnisse zurücksetzen |
 | `/api/state` | Aktueller Stand als JSON |
@@ -254,12 +262,45 @@ Anzeige: Spalten = abgeschlossene Sätze, weißes Feld = Punkte im laufenden Sat
 ✓ = Sieger, Punkt = Aufschläger, unterstrichen = Rückschläger (Doppel), „Gleich“ =
 Spiel aufgerufen, aber noch ohne Punkte.
 
+### Spielern folgen
+
+Im Liveticker auf einen **Namen tippen** (oder oben „Spieler hinzufügen“) – der Spieler steht
+dann mit Stern unter **„Meine Spieler“**: laufendes Spiel, als Nächstes (mit Erweiterung) und
+zuletzt gespielt; seine Karten sind gelb umrandet. Auf `/spieler` lassen sich auch ganze
+**Vereine** folgen. Die Liste bleibt im Browser gespeichert (kein Konto, nichts auf dem Server).
+
+Hinweise erscheinen auf der Seite, wenn ein gefolgter Spieler **aufgerufen** wird, **gleich
+dran** ist oder sein Spiel **endet**. Mit „Benachrichtigungen einschalten“ kommen sie auch als
+Browser-Benachrichtigung, solange die Seite geöffnet ist (nur über HTTPS möglich).
+
+`/spieler` (nach dem Vorbild des [EM-Tickers](https://cvpcvp.github.io/esc26/)):
+**Meine Spieler** (je Spieler: jetzt, als Nächstes, Ergebnisse mit Dauer, Bilanz),
+**Alle Spieler** (Suche, Verein, Bilanz), **Vereine** (Spieler, Bilanz, wer gerade spielt),
+**Statistik** (Spiele, Spielzeit, längstes/kürzestes Spiel, meiste Punkte, längster Satz,
+meiste Siege).
+
+### Ergebnis-Einblendung (Stream)
+
+`/ergebnis` als OBS-Browserquelle (1920 × 1080): Endet ein Spiel, erscheint unten eine
+Bauchbinde mit Sieger, Satzergebnissen und Gegner (mit Erweiterung auch Vereinen). Mehrere
+Spielenden kommen nacheinander.
+
+| Parameter | Wirkung |
+| --- | --- |
+| `mode=bar` | Laufband mit den letzten Ergebnissen statt Bauchbinde |
+| `c=1,2` | nur Spiele dieser Courts |
+| `dauer=12` | Sekunden pro Einblendung |
+| `anzahl=8` | Ergebnisse im Laufband |
+| `pos=top` | oben statt unten |
+| `test=1` | sofort das letzte Ergebnis zeigen (zum Einrichten) |
+| `names=full`, `scale`, `bg` | wie bei den anderen Overlays |
+
 ### Spielfeld-Ansicht
 
 Wie die Eingabeansicht in bup: das Feld von oben, die Spieler in ihren Aufschlagfeldern, ein
 Pfeil vom Aufschläger zum Rückschläger (wird bei jedem neuen Ballwechsel neu gezeichnet) und der
 Punktestand am Netz. Braucht die [BTS-Erweiterung](docs/BTS-UPGRADE.md): Solange der Liveticker sie nicht erkennt
-(Anzeige im Admin-Panel unter „Aufschlaganzeige“), ist der Knopf „Spielfeld“ ausgegraut und
+(Anzeige im Admin-Panel unter „BTS-Erweiterung“), ist der Knopf „Spielfeld“ ausgegraut und
 `/feld/<nr>` zeigt einen Hinweis.
 
 Seiten: Heim beginnt im ersten Satz links, nach jedem Satz wird gewechselt, im Entscheidungssatz
