@@ -579,6 +579,22 @@ function handleTickerPassword(req, res) {
   });
 }
 
+// BTS-Verbindung neu aufbauen: alle Verbindungen schließen – BTS verbindet sich nach
+// etwa einer Sekunde von selbst neu und schickt dabei den kompletten Stand (tset).
+// Hilft auch nach einer Passwortänderung (falsches Passwort hält BTS sonst 10 min fest).
+function handleBtsReconnect(req, res) {
+  if (!requireAdmin(req, res)) return;
+  readBody(req, () => {
+    let n = 0;
+    for (const ws of wss.clients) {
+      n++;
+      try { ws.close(1012, 'reconnect'); } catch (e) { ws.terminate(); }
+    }
+    console.log('BTS-Verbindungen aus dem Admin-Panel getrennt:', n);
+    send(res, 200, JSON.stringify({ ok: true, closed: n }));
+  });
+}
+
 function handleTestMode(req, res) {
   if (!requireAdmin(req, res)) return;
   readBody(req, (body) => {
@@ -608,6 +624,7 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && pathname === '/api/admin-password') return handleAdminPassword(req, res);
   if (req.method === 'POST' && pathname === '/api/ticker-password') return handleTickerPassword(req, res);
   if (req.method === 'POST' && pathname === '/api/testmode') return handleTestMode(req, res);
+  if (req.method === 'POST' && pathname === '/api/bts-reconnect') return handleBtsReconnect(req, res);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, '{"error":"method"}');
   if (pathname === '/api/state') return send(res, 200, stateJson);
   if (pathname === '/api/brand') return send(res, 200, JSON.stringify(brandInfo()));

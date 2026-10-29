@@ -113,6 +113,10 @@
       <dt class="diag" hidden>Aufschlagdaten</dt><dd id="srvState" class="muted diag" hidden>–</dd>
       <dt>Adresse für BTS</dt><dd><code id="wsUrl"></code></dd>
     </dl>
+    <div class="actions-row">
+      <button type="button" id="reconnect" class="secondary" title="Trennt die Verbindung; BTS verbindet sich sofort neu und schickt den kompletten Stand">BTS neu verbinden</button>
+    </div>
+    <div id="reconnectMsg" style="margin-top:8px"></div>
   </section>
 
   <h2>Einrichtung in BTS</h2>
@@ -324,6 +328,7 @@
     else { ext.textContent = 'noch nicht erkennbar – sobald ein Spiel auf einem Court liegt'; ext.className = 'muted'; }
     var courts = (state && state.courts) || [];
     var all = (state && state.matches) || [];
+    checkReconnect(state);
     var tm = !!(state && state.testMode);
     document.getElementById('testMode').checked = tm;
     document.querySelectorAll('.diag').forEach(function (e) { e.hidden = !tm; });
@@ -649,6 +654,40 @@
       document.getElementById('pwForm').hidden = !!d.passwordFromEnv;
       showTickerPw(d);
     });
+  }
+
+  // ---- BTS neu verbinden
+  var waitReconnect = null;   // Zeitpunkt des Trennens, solange auf die neue Verbindung gewartet wird
+  document.getElementById('reconnect').addEventListener('click', function () {
+    var msg = document.getElementById('reconnectMsg');
+    post('/api/bts-reconnect', {}).then(function (x) {
+      if (!x.ok) { msg.textContent = x.d.error || 'Fehler'; msg.className = 'bad'; return; }
+      if (!x.d.closed) {
+        msg.textContent = 'BTS ist gerade nicht verbunden. In BTS beim Turnier den Ticker aus- und wieder einschalten ' +
+          'und Adresse/Passwort prüfen.';
+        msg.className = 'bad';
+        return;
+      }
+      waitReconnect = Date.now();
+      msg.textContent = 'Getrennt – BTS verbindet sich in wenigen Sekunden neu …';
+      msg.className = 'muted';
+      setTimeout(function () {
+        if (!waitReconnect) return;
+        waitReconnect = null;
+        msg.textContent = 'BTS hat sich nach 20 Sekunden nicht wieder verbunden – bitte in BTS den Ticker-Status prüfen ' +
+          '(Adresse, Passwort, Ticker aktiviert).';
+        msg.className = 'bad';
+      }, 20000);
+    }).catch(function () { msg.textContent = 'Fehler beim Senden.'; msg.className = 'bad'; });
+  });
+  function checkReconnect(state) {
+    var b = state && state.bts;
+    if (!waitReconnect || !b || !b.connected || !b.connectedSince) return;
+    if (Date.parse(b.connectedSince) < waitReconnect - 1000) return;
+    waitReconnect = null;
+    var msg = document.getElementById('reconnectMsg');
+    msg.textContent = 'BTS ist wieder verbunden ✓';
+    msg.className = 'ok';
   }
 
   // ---- Testmodus
