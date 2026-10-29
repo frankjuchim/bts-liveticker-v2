@@ -176,9 +176,8 @@ h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; colo
   text-overflow: ellipsis;
   transition: left 0.5s, top 0.5s;
 }
+/* Aufschläger nur hinterlegt – Punkt und Unterstrich braucht es hier nicht, der Pfeil zeigt die Richtung */
 .fp.srv { background: #ffd84d; color: #1a1a1a; font-weight: 700; }
-.fp.srv::before { content: ""; display: inline-block; width: 0.45em; height: 0.45em; margin: 0 0.35em 0.1em 0; border-radius: 50%; background: currentColor; vertical-align: middle; }
-.fp.rcv { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .fp.winner { font-weight: 700; }
 .fp.winner::after { content: " ✓"; }
 .fscore {
