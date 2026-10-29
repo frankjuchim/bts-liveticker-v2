@@ -33,6 +33,11 @@ if [ -d "$APP_DIR/.git" ]; then
 else
   git clone -q --depth 1 -b "$BRANCH" "$REPO" "$APP_DIR"
 fi
+# Installierte Version merken (Anzeige und Update-Prüfung im Admin-Panel)
+REPO_SLUG=$(git -C "$APP_DIR" remote get-url origin | sed -E 's#^.*github\.com[:/]##; s#\.git$##')
+printf '{"commit":"%s","date":"%s","repo":"%s","branch":"%s"}\n' \
+  "$(git -C "$APP_DIR" rev-parse HEAD)" "$(git -C "$APP_DIR" log -1 --format=%cI)" "$REPO_SLUG" "$BRANCH" \
+  > "$APP_DIR/.version.json"
 # Abhängigkeiten nur neu installieren, wenn sich package-lock.json geändert hat
 LOCK_SUM=$(sha256sum "$APP_DIR/package-lock.json" | cut -d' ' -f1)
 if [ ! -d "$APP_DIR/node_modules" ] || [ "$(cat "$APP_DIR/node_modules/.lock-sum" 2>/dev/null)" != "$LOCK_SUM" ]; then
@@ -71,8 +76,13 @@ fi
 
 echo "==> Dienst einrichten"
 install -m 644 "$APP_DIR/deploy/bts-liveticker.service" /etc/systemd/system/bts-liveticker.service
+# Update-Knopf im Admin-Panel: der Liveticker (ohne root) legt eine Anfrage-Datei an,
+# diese Einheiten starten daraufhin deploy/update.sh als root
+install -m 644 "$APP_DIR/deploy/bts-liveticker-update.service" /etc/systemd/system/bts-liveticker-update.service
+install -m 644 "$APP_DIR/deploy/bts-liveticker-update.path" /etc/systemd/system/bts-liveticker-update.path
 systemctl daemon-reload
 systemctl enable -q bts-liveticker
+systemctl enable -q --now bts-liveticker-update.path
 systemctl restart bts-liveticker
 
 PORT=$(sed -n 's/^PORT=//p' "$ENV_FILE" | tail -1)

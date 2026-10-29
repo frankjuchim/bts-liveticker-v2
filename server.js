@@ -12,6 +12,7 @@ const { WebSocketServer } = require('ws');
 const store = require('./lib/store');
 const branding = require('./lib/branding');
 const authLib = require('./lib/auth');
+const updaterLib = require('./lib/updater');
 
 const PORT = parseInt(process.env.PORT || '80', 10);
 const TICKER_PASSWORD = process.env.TICKER_PASSWORD || '';
@@ -30,6 +31,7 @@ try {
 let BRAND = branding.load(process.env, DATA_DIR, settings, DESIGNS);
 // ADMIN_PASSWORD gesetzt → festes Admin-Passwort (im Panel nicht änderbar)
 const auth = authLib.create(DATA_DIR, process.env.ADMIN_PASSWORD);
+const updater = updaterLib.create(__dirname, DATA_DIR);
 let brandVersion = Date.now().toString(36);
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PATCH_DIR = path.join(__dirname, 'bts-patch');
@@ -501,9 +503,35 @@ function handleReset(req, res) {
   });
 }
 
+// Update aus dem Admin-Panel: Stand abfragen (GET, ?check=1 fragt GitHub) bzw. starten (POST)
+function handleUpdateInfo(req, res, check) {
+  if (!requireAdmin(req, res)) return;
+  const info = { mode: updater.mode(), installed: updater.installed(), running: updater.running(), log: updater.log() };
+  const done = (latest, error) => send(res, 200, JSON.stringify(Object.assign(info, { latest, error })), null, {
+    'Cache-Control': 'no-store',
+  });
+  // Docker (z. B. CapRover) oder unbekannte Installation: Update nicht von hier – GitHub nicht fragen
+  if (!check || info.mode === 'docker' || info.mode === 'none') return done(null, null);
+  updater.latest(check === 'force').then((l) => done(l, null), (e) => done(null, String(e.message || e)));
+}
+
+function handleUpdateStart(req, res) {
+  if (!requireAdmin(req, res)) return;
+  readBody(req, () => {
+    try {
+      updater.start();
+    } catch (e) {
+      return send(res, 400, JSON.stringify({ error: e.message }));
+    }
+    console.log('Update aus dem Admin-Panel angefordert');
+    send(res, 200, '{"ok":true}');
+  });
+}
+
 const server = http.createServer((req, res) => {
   const { pathname } = new URL(req.url, 'http://x');
   if (req.method === 'POST' && pathname === '/api/reset') return handleReset(req, res);
+  if (req.method === 'POST' && pathname === '/api/update') return handleUpdateStart(req, res);
   if (req.method === 'POST' && pathname === '/api/brand') return handleBrand(req, res);
   if (req.method === 'POST' && pathname === '/api/logo') return handleLogo(req, res);
   if (req.method === 'POST' && pathname === '/api/login') return handleLogin(req, res);
@@ -520,6 +548,7 @@ const server = http.createServer((req, res) => {
       'Cache-Control': 'no-store',
     });
   }
+  if (pathname === '/api/update') return handleUpdateInfo(req, res, new URL(req.url, 'http://x').searchParams.get('check'));
   if (pathname === '/api/events') return handleEvents(req, res);
   if (pathname === '/tournament-logo') return serveLogo(req, res);
   if (pathname === '/config.css') return send(res, 200, BRAND.css, 'text/css; charset=utf-8', { 'Cache-Control': 'no-cache' });

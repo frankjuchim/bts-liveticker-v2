@@ -71,10 +71,18 @@ curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/
 
 ### Update
 
-Neue Versionen holt man mit einem Befehl. Konfiguration, Passwörter, Logo, Farben und
-gespeicherte Ergebnisse bleiben erhalten; BTS verbindet sich danach von selbst wieder.
+Konfiguration, Passwörter, Logo, Farben und gespeicherte Ergebnisse bleiben bei einem Update
+erhalten; BTS verbindet sich danach von selbst wieder.
 
-**Vom Proxmox-Host aus (empfohlen):** im Web-UI *Datacenter → Knoten → Shell* öffnen und
+**Im Admin-Panel (am einfachsten):** Abschnitt **„Update“** zeigt die installierte und die
+neueste Version mit den Änderungen. **„Jetzt aktualisieren“** holt den neuen Stand von GitHub,
+startet den Liveticker neu (etwa eine Minute nicht erreichbar) und zeigt dabei das Protokoll.
+Technisch legt der Liveticker (läuft ohne root-Rechte) nur eine Anfrage-Datei an; die
+systemd-Einheit `bts-liveticker-update.path` startet daraufhin `deploy/update.sh` als root.
+Den Knopf gibt es ab dieser Version – **ältere Installationen einmalig per Befehl
+aktualisieren** (siehe unten), danach geht es per Knopf.
+
+**Vom Proxmox-Host aus:** im Web-UI *Datacenter → Knoten → Shell* öffnen und
 
 ```sh
 pct exec <CTID> -- bash /opt/bts-liveticker/deploy/update.sh
