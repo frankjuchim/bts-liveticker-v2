@@ -34,11 +34,11 @@ body {
   line-height: 1.35;
 }
 .wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
-.brand { display: flex; align-items: center; gap: 12px; background: var(--club); color: #fff; border-radius: 12px 12px 0 0; padding: 10px 16px; }
-.brand img { height: 52px; max-width: 120px; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
-.brand b { font-size: 1.2rem; display: block; }
-.brand span { font-size: 0.85rem; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.08em; }
-h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 28px 0 10px; }
+.brand { display: flex; align-items: center; gap: 10px; background: var(--club); color: #fff; border-radius: 12px 12px 0 0; padding: 6px 14px; }
+.brand img { height: 36px; max-width: 90px; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
+.brand b { font-size: 1.05rem; display: block; line-height: 1.2; }
+.brand span { font-size: 0.72rem; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.08em; }
+h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 22px 0 8px; }
 .muted { color: var(--muted); }
 .empty { margin: 4px 0; }
 
@@ -50,22 +50,22 @@ h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: 
   gap: 12px 16px;
   background: var(--card);
   border-radius: 0 0 12px 12px;
-  padding: 16px;
+  padding: 10px 16px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
-.t-logo { height: 56px; max-width: 140px; object-fit: contain; border-radius: 6px; padding: 4px; }
+.t-logo { height: 44px; max-width: 120px; object-fit: contain; border-radius: 6px; padding: 4px; }
 .t-text { flex: 1; min-width: 200px; }
-.event h1 { margin: 0; font-size: clamp(1.2rem, 4vw, 1.7rem); }
-.t-meta { color: var(--muted); font-size: 0.9rem; }
+.event h1 { margin: 0; font-size: clamp(1.1rem, 3.4vw, 1.45rem); line-height: 1.25; }
+.t-meta { color: var(--muted); font-size: 0.85rem; }
 .t-meta:empty { display: none; }
 .t-link { color: var(--link); font-weight: 600; text-decoration: none; white-space: nowrap; }
 
-.tools { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-top: 16px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-top: 10px; }
 .tools input[type=search] {
   flex: 1;
   min-width: 220px;
   font: inherit;
-  padding: 9px 12px;
+  padding: 7px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--card);
@@ -212,38 +212,46 @@ h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: 
 .pname { cursor: pointer; }
 .pname:hover { text-decoration: underline dotted; text-underline-offset: 3px; }
 .pname.fav::before { content: "★ "; color: #f5b800; }
+/* Aufschläger und gefolgt: Punkt vorne, Stern hinten */
+.pname.fav.srv::before { content: ""; color: inherit; }
+.pname.fav.srv::after { content: " ★"; color: #f5b800; }
 .now-card.followed, .game.followed, .up.followed, .field-card.followed { box-shadow: 0 0 0 3px #f5b800; }
 .now-card .club { font-size: 0.72rem; color: rgba(255,255,255,0.72); text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .g-club { font-size: 0.78rem; color: var(--muted); font-weight: 400; }
 
-.follow-box { background: var(--card); border-radius: 12px; padding: 4px 14px 12px; margin-top: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-.fb-head { display: flex; align-items: baseline; gap: 12px; }
-.fb-head h2 { margin: 12px 0 6px; }
-.fb-more { margin-left: auto; color: var(--link); text-decoration: none; font-weight: 600; font-size: 0.9rem; }
-.fb-hint { margin: 0 0 8px; font-size: 0.9rem; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
-.chip { font: inherit; font-size: 0.85rem; padding: 4px 10px; border-radius: 999px; border: 1px solid #f5b800; background: rgba(245,184,0,0.12); color: var(--text); cursor: pointer; }
+.follow-box { background: var(--card); border-radius: 12px; padding: 8px 12px; margin-top: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.fb-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.fb-head h2 { margin: 0; font-size: 0.85rem; white-space: nowrap; }
+.fb-head h2::before { content: "★ "; color: #f5b800; }
+.fb-more { margin-left: auto; color: var(--link); text-decoration: none; font-weight: 600; font-size: 0.85rem; white-space: nowrap; }
+.fb-hint { margin: 4px 0 0; font-size: 0.82rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chips:empty { display: none; }
+.chip { font: inherit; font-size: 0.8rem; padding: 2px 9px; border-radius: 999px; border: 1px solid #f5b800; background: rgba(245,184,0,0.12); color: var(--text); cursor: pointer; }
 .chip::before { content: "★ "; color: #f5b800; }
 .chip::after { content: " ×"; color: var(--muted); }
 .chip.club::before { content: "★ Verein: "; }
-.fb-list { display: flex; flex-direction: column; gap: 6px; }
-.fb-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: var(--bg); }
-.fb-info { flex: 1; min-width: 0; }
-.fb-top { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
-.fb-court { font-weight: 700; }
-.fb-name { color: var(--muted); font-size: 0.9rem; }
-.fb-vs { font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fb-add { width: 12.5em; min-width: 0; font: inherit; font-size: 0.85rem; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--text); }
+.fb-add:focus { width: 17em; outline: 2px solid var(--club); outline-offset: -1px; }
+.fb-notify { font: inherit; font-size: 0.8rem; padding: 3px 9px; border-radius: 999px; border: 0; background: var(--club); color: #fff; cursor: pointer; white-space: nowrap; }
+.fb-list { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.fb-list:empty { display: none; }
+.fb-item { display: flex; align-items: center; gap: 10px; padding: 4px 10px; border-radius: 8px; background: var(--bg); font-size: 0.9rem; }
+.fb-info { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.fb-top { display: flex; gap: 6px 8px; align-items: center; white-space: nowrap; }
+.fb-court { font-weight: 700; font-variant-numeric: tabular-nums; }
+.fb-name { color: var(--muted); font-size: 0.85rem; }
+.fb-vs { flex: 1; min-width: 12em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fb-score { font-variant-numeric: tabular-nums; white-space: nowrap; display: flex; gap: 8px; align-items: baseline; }
-.fb-sets { color: var(--muted); font-size: 0.9rem; white-space: pre; }
-.fb-cur { font-size: 1.15rem; padding: 0 6px; border-radius: 6px; background: var(--card); }
-.fb-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.fb-tools input { flex: 1; min-width: 200px; font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); }
-.fb-tools button { font: inherit; padding: 7px 12px; border-radius: 8px; border: 0; background: var(--club); color: #fff; cursor: pointer; }
+.fb-sets { color: var(--muted); font-size: 0.85rem; white-space: pre; }
+.fb-cur { font-size: 1rem; padding: 0 6px; border-radius: 6px; background: var(--card); }
+.fb-item .badge { font-size: 0.68rem; }
+.fb-rest { font-size: 0.82rem; color: var(--link); text-decoration: none; padding: 0 10px; }
+.fb-none { margin: 0; font-size: 0.85rem; }
 
 /* Als Nächstes */
 .upcoming { display: flex; flex-direction: column; gap: 6px; }
 .up { display: flex; gap: 12px; align-items: center; background: var(--card); border-radius: 10px; padding: 8px 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
-.fb-list .up { background: var(--bg); box-shadow: none; }
 .up-when { width: 4.6em; flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .up-time { font-weight: 700; font-variant-numeric: tabular-nums; }
 .up-eta { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }

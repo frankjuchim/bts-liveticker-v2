@@ -37,17 +37,15 @@
   <section class="follow-box" id="followBox">
     <div class="fb-head">
       <h2>Meine Spieler</h2>
+      <div class="chips" id="fbChips"></div>
+      <input type="search" id="fbAdd" class="fb-add" list="fbNames" placeholder="+ Spieler folgen …" autocomplete="off">
+      <datalist id="fbNames"></datalist>
+      <button type="button" class="fb-notify" id="fbNotify" title="Benachrichtigungen einschalten" hidden>🔔 Hinweise</button>
       <a class="fb-more" href="/spieler">Übersicht ›</a>
     </div>
-    <p class="muted fb-hint" id="fbHint">Auf einen Namen tippen, um dem Spieler zu folgen – seine Spiele stehen dann hier,
-      und du bekommst einen Hinweis, wenn er aufgerufen wird oder sein Spiel endet.</p>
-    <div class="chips" id="fbChips"></div>
+    <p class="muted fb-hint" id="fbHint">Namen antippen, um Spielern zu folgen – ihre Spiele stehen dann hier,
+      mit Hinweis bei Aufruf und Spielende.</p>
     <div class="fb-list" id="fbList"></div>
-    <div class="fb-tools">
-      <input type="search" id="fbAdd" list="fbNames" placeholder="Spieler hinzufügen …" autocomplete="off">
-      <datalist id="fbNames"></datalist>
-      <button type="button" id="fbNotify" hidden>Benachrichtigungen einschalten</button>
-    </div>
   </section>
 
   <section>
@@ -279,12 +277,22 @@
     });
     var list = document.getElementById('fbList');
     list.replaceChildren();
-    items.slice(0, 6).forEach(function (it) {
-      if (it.u) return list.appendChild(upRow(it.u));
-      var m = it.m;
-      var row = el('article', 'fb-item ' + m.status);
+    var max = 4;
+    items.slice(0, max).forEach(function (it) {
+      var m = it.m || it.u;
+      var row = el('article', 'fb-item ' + (it.u ? 'next' : m.status));
       var info = el('div', 'fb-info');
       var top = el('div', 'fb-top');
+      if (it.u) {
+        var eta = sched && sched.eta[m.id];
+        if (m.state === 'preparation') top.appendChild(el('span', 'badge called', 'Gleich'));
+        if (eta || m.time) top.appendChild(el('span', 'fb-court', eta ? 'ca. ' + Schedule.clock(eta) : m.time));
+        top.appendChild(el('span', 'fb-name', m.name));
+        info.appendChild(top);
+        info.appendChild(el('div', 'fb-vs', m.home.filter(Boolean).join(' / ') + ' – ' + m.away.filter(Boolean).join(' / ')));
+        row.appendChild(info);
+        return list.appendChild(row);
+      }
       if (m.status === 'live' || m.status === 'called') {
         top.appendChild(el('span', 'badge ' + (m.status === 'live' ? 'live' : 'called'), m.status === 'live' ? 'Live' : 'Aufruf'));
         top.appendChild(el('span', 'fb-court', 'Court ' + m.court));
@@ -304,7 +312,12 @@
       row.appendChild(score);
       list.appendChild(row);
     });
-    if (any && !items.length) list.appendChild(el('p', 'muted', 'Gerade keine Spiele deiner Spieler.'));
+    if (items.length > max) {
+      var rest = el('a', 'fb-rest', '+ ' + (items.length - max === 1 ? '1 weiteres Spiel' : (items.length - max) + ' weitere Spiele') + ' in der Übersicht ›');
+      rest.href = '/spieler';
+      list.appendChild(rest);
+    }
+    if (any && !items.length) list.appendChild(el('p', 'muted fb-none', 'Gerade keine Spiele deiner Spieler.'));
 
     // Namensvorschläge für „Spieler hinzufügen“
     var known = {};
