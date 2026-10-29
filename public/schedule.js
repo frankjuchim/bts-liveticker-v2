@@ -158,6 +158,22 @@
     return 'ca. ' + txt + (min > 0 ? ' Verzug' : ' vor dem Zeitplan');
   }
 
+  // Abweichung kurz: „+25 min“, „+1:10 h“, „−10 min“, „pünktlich“
+  function deltaText(ms) {
+    if (ms == null) return '';
+    var min = round5(ms);
+    if (Math.abs(min) < 5) return 'pünktlich';
+    var abs = Math.abs(min);
+    return (min > 0 ? '+' : '−') + (abs >= 60 ? Math.floor(abs / 60) + ':' + String(abs % 60).padStart(2, '0') + ' h' : abs + ' min');
+  }
+
+  // Farbe: ok (pünktlich oder früher), warn (bis 30 min später), late (mehr)
+  function level(ms) {
+    if (ms == null) return '';
+    var min = round5(ms);
+    return min < 5 ? 'ok' : (min <= 30 ? 'warn' : 'late');
+  }
+
   // Erklärung zur Schätzung mit den aktuellen Grundlagen
   function basisText(r) {
     var parts = [];
@@ -172,7 +188,7 @@
     return parts.join(' · ');
   }
 
-  var api = { compute: compute, delayText: delayText, clock: clock, basisText: basisText, plannedMs: plannedMs };
+  var api = { compute: compute, delayText: delayText, deltaText: deltaText, level: level, clock: clock, basisText: basisText, plannedMs: plannedMs };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Schedule = api;
 })(this);

@@ -18,12 +18,10 @@
     <img class="t-logo" id="tLogo" alt="" hidden>
     <div class="t-text">
       <h1 id="tName">Turnier-Liveticker</h1>
-      <div class="t-meta" id="tMeta"></div>
+      <div class="t-meta"><span id="tMeta"></span><a class="sched-chip" id="schedBar" href="#upSec" hidden></a></div>
     </div>
     <a class="t-link" id="tLink" target="_blank" rel="noopener" hidden>Alle Spiele auf turnier.de ›</a>
   </header>
-
-  <a class="sched-bar" id="schedBar" href="#upSec" hidden></a>
 
   <div class="tools">
     <input type="search" id="q" placeholder="Spieler oder Disziplin suchen …" autocomplete="off">
@@ -211,6 +209,8 @@
       var e = el('span', 'up-eta', 'ca. ' + Schedule.clock(eta));
       e.title = 'Voraussichtlicher Beginn (Schätzung, unverbindlich)';
       when.appendChild(e);
+      var pl = u.time && Schedule.plannedMs({ time: u.time, date: sched.testMode ? null : u.date }, eta);
+      if (pl) when.appendChild(el('span', 'up-delta ' + Schedule.level(eta - pl), Schedule.deltaText(eta - pl)));
       if (u.time) when.appendChild(el('span', 'up-plan', 'Plan ' + u.time));
     } else if (u.time) {
       when.appendChild(el('span', 'up-time', u.time));
@@ -287,6 +287,8 @@
         var eta = sched && sched.eta[m.id];
         if (m.state === 'preparation') top.appendChild(el('span', 'badge called', 'Gleich'));
         if (eta || m.time) top.appendChild(el('span', 'fb-court', eta ? 'ca. ' + Schedule.clock(eta) : m.time));
+        var plf = eta && m.time && Schedule.plannedMs({ time: m.time, date: sched.testMode ? null : m.date }, eta);
+        if (plf) top.appendChild(el('span', 'up-delta ' + Schedule.level(eta - plf), Schedule.deltaText(eta - plf)));
         top.appendChild(el('span', 'fb-name', m.name));
         info.appendChild(top);
         info.appendChild(el('div', 'fb-vs', m.home.filter(Boolean).join(' / ') + ' – ' + m.away.filter(Boolean).join(' / ')));
@@ -397,7 +399,11 @@
     var up = (state && state.upcoming) || null;
     var bar = document.getElementById('schedBar');
     bar.hidden = !(sched && sched.delay != null);
-    if (!bar.hidden) bar.textContent = 'Zeitplan: ' + Schedule.delayText(sched.delay) + ' (geschätzt' + (sched.testMode ? ', Testmodus' : '') + ')';
+    if (!bar.hidden) {
+      bar.className = 'sched-chip ' + Schedule.level(sched.delay);
+      bar.textContent = Schedule.delayText(sched.delay).replace(/^ca\. /, '') + (sched.testMode ? ' · Testmodus' : '');
+      bar.title = 'Geschätzter Verzug zum Zeitplan (aus den zuletzt aufgerufenen Spielen) – unverbindlich';
+    }
     document.getElementById('schedNote').hidden = !(sched && Object.keys(sched.eta).length);
     if (sched) document.getElementById('schedBasis').textContent = 'Grundlage: ' + Schedule.basisText(sched) +
       '. Aufrufe außer der Reihe, Verletzungspausen, lange Spiele oder Pausen im Zeitplan sind nicht vorhersehbar.';

@@ -258,9 +258,14 @@ h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; colo
 .up-eta { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .up-plan { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* Zeitplan-Schätzung */
-.sched-bar { display: inline-block; margin: 0 0 12px; padding: 4px 12px; border-radius: 999px; background: var(--card);
-  color: inherit; text-decoration: none; font-weight: 600; font-size: 0.9rem; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
-.sched-bar::before { content: "⏱ "; }
+.sched-chip { display: inline-block; margin-left: 8px; padding: 1px 9px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;
+  text-decoration: none; white-space: nowrap; vertical-align: 1px; color: #fff; background: var(--muted); }
+.sched-chip::before { content: "⏱ "; }
+.sched-chip[hidden] { display: none; }
+.sched-chip.ok, .up-delta.ok { background: #1d7a33; }
+.sched-chip.warn, .up-delta.warn { background: #b86e00; }
+.sched-chip.late, .up-delta.late { background: #c62828; }
+.up-delta { display: inline-block; font-size: 0.7rem; font-weight: 700; color: #fff; padding: 0 6px; border-radius: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .sched-note { font-size: 0.82rem; color: var(--muted); margin: -4px 0 10px; }
 .sched-note p { margin: 0 0 4px; }
 .sched-note summary { cursor: pointer; }
