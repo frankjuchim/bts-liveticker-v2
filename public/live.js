@@ -120,7 +120,8 @@
   }
 
   // Namen einer Seite als <span>s: Aufschläger mit Punkt (.srv), im Doppel
-  // Rückschläger unterstrichen (.rcv). Leere Plätze bleiben ausgelassen.
+  // Rückschläger unterstrichen (.rcv); ist nur das aufschlagende Team bekannt,
+  // bekommen beide Namen einen Ring (.srv-team). Leere Plätze bleiben ausgelassen.
   function playerSpans(m, side, short) {
     var sv = m.service;
     var list = [];
@@ -129,6 +130,10 @@
       var span = el('span', 'name', short ? shortName(n) : n);
       if (sv && sv.server.side === side && sv.server.player === i) {
         span.classList.add('srv');
+      }
+      // Aufschläger nicht bekannt (BTS schickt keine Positionen): aufschlagendes Team markieren
+      if (sv && sv.server.side === side && sv.server.player == null && m[side].length > 1) {
+        span.classList.add('srv-team');
       }
       if (sv && sv.receiver.side === side && m[side].length > 1 && sv.receiver.player === i) {
         span.classList.add('rcv');
