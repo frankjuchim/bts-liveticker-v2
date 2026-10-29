@@ -273,3 +273,16 @@ test('Zeitplan: Ansetzung wird gemerkt, bis das Spiel aufgerufen wird', () => {
   const r = store.restore(JSON.parse(JSON.stringify(s)));
   assert.deepStrictEqual(store.view(r).matches[0].planned, { time: '14:20', date: '2026-10-29' });
 });
+
+test('Aufschlagfeld auch ohne Positionen im Doppel', () => {
+  const s = store.emptyStore();
+  store.applyTset(s, {
+    courts: [{ _id: 'c1', num: 1, match_id: 'm' }],
+    matches: [{ _id: 'm', n: 'MX', p0: ['A', 'B'], p1: ['C', 'D'], s: [[21, 14], [21, 20]], sf: SF_3x21, d: true, ts: true }],
+  }, '2026-10-29T10:00:00.000Z');
+  const sv = store.view(s).matches[0].service;
+  assert.strictEqual(sv.server.side, 'home');
+  assert.strictEqual(sv.server.player, null);
+  assert.strictEqual(sv.positions, null);
+  assert.strictEqual(sv.serveCourt, 'L');   // 21 Punkte: ungerade → linkes Feld
+});

@@ -160,6 +160,7 @@ h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; colo
 .f-lines .f-net { stroke: #fff; stroke-width: 8; stroke-dasharray: 10 8; }
 .f-arrow path { fill: none; stroke: #ffd84d; stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4)); }
 .f-arrow marker path { fill: #ffd84d; stroke: none; }
+.f-arrow circle.f-shuttle { fill: #ffd84d; stroke: none; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4)); }
 .f-arrow path.draw { stroke-dasharray: 1600; stroke-dashoffset: 1600; animation: f-draw 0.7s ease-out forwards; }
 @keyframes f-draw { to { stroke-dashoffset: 0; } }
 .fp {

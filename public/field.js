@@ -40,7 +40,10 @@
     var y;
     if (court === 'R') y = left ? H * 0.75 : H * 0.25;
     else if (court === 'L') y = left ? H * 0.25 : H * 0.75;
-    else y = count > 1 ? (index === 0 ? H * 0.25 : H * 0.75) : H / 2;   // Position unbekannt
+    else if (count > 1) {
+      // Position unbekannt: nebeneinander hinten, damit der Pfeil nicht auf einen Namen zeigt
+      return { x: left ? 140 : W - 140, y: index === 0 ? H / 2 - 42 : H / 2 + 42 };
+    } else y = H / 2;
     return { x: x, y: y };
   }
 
@@ -102,22 +105,31 @@
     // Pfeil vom Aufschläger zum Rückschläger (Bogen wie der Flug des Balls)
     var from = sv && sv.server.player != null && spots[sv.server.side][sv.server.player];
     var to = sv && sv.receiver.player != null && spots[sv.receiver.side][sv.receiver.player];
+    // Spieler unbekannt (BTS schickt keine Positionen): von Aufschlagfeld zu Aufschlagfeld
+    var fields = false;
+    if ((!from || !to) && sv && sv.serveCourt) {
+      from = spot(onLeft(m, sv.server.side), sv.serveCourt);
+      to = spot(onLeft(m, sv.receiver.side), sv.serveCourt);
+      fields = true;
+    }
     if (from && to) {
       var a = svg('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', class: 'f-arrow' });
       var defs = svg('defs', {}, a);
       var mk = svg('marker', { id: 'ah-' + opts.uid, viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' }, defs);
       svg('path', { d: 'M0,0 L10,5 L0,10 z' }, mk);
       var dir = from.x < to.x ? 1 : -1;
-      var x1 = from.x + dir * 120;
-      var x2 = to.x - dir * 120;
-      var y1 = from.y + (to.y > from.y ? 30 : -30);
-      var y2 = to.y - (to.y > from.y ? 30 : -30);
+      var gap = fields ? 0 : 120;   // ohne Namen direkt aus der Feldmitte
+      var x1 = from.x + dir * gap;
+      var x2 = to.x - dir * gap;
+      var y1 = from.y + (fields ? 0 : (to.y > from.y ? 30 : -30));
+      var y2 = to.y - (fields ? 0 : (to.y > from.y ? 30 : -30));
       var path = svg('path', {
         d: 'M' + x1 + ',' + y1 + ' Q' + (W / 2) + ',' + ((y1 + y2) / 2 - 170) + ' ' + x2 + ',' + y2,
         'marker-end': 'url(#ah-' + opts.uid + ')',
         'vector-effect': 'non-scaling-stroke',
       }, a);
       // bei neuem Ballwechsel einzeichnen
+      if (fields) svg('circle', { cx: x1, cy: y1, r: 14, class: 'f-shuttle' }, a);
       if (!prev || prev.arrowKey !== JSON.stringify(sv)) once(path, 'draw');
       f.appendChild(a);
     }

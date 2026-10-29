@@ -110,6 +110,7 @@
       <dt>Courts</dt><dd id="courtCount">–</dd>
       <dt>Spiele</dt><dd id="matchCount">–</dd>
       <dt>BTS-Erweiterung</dt><dd id="extState">–</dd>
+      <dt>Aufschlagdaten</dt><dd id="srvState" class="muted">–</dd>
       <dt>Adresse für BTS</dt><dd><code id="wsUrl"></code></dd>
     </dl>
   </section>
@@ -313,6 +314,18 @@
     else { ext.textContent = 'noch nicht erkennbar – sobald ein Spiel auf einem Court liegt'; ext.className = 'muted'; }
     var courts = (state && state.courts) || [];
     var all = (state && state.matches) || [];
+    // Je laufendem Spiel: schickt BTS Aufschlag und (im Doppel) die Positionen?
+    var srvInfo = [];
+    all.forEach(function (m) {
+      if (m.status !== 'live' || !m.court) return;
+      var dbl = m.home.length > 1 || m.away.length > 1;
+      var t = !m.service ? 'kein Aufschlag' : (dbl && !m.service.positions ? 'nur Team, keine Positionen' : '✓');
+      srvInfo.push('Court ' + m.court + ': ' + t);
+    });
+    var ss = document.getElementById('srvState');
+    ss.textContent = srvInfo.length ? srvInfo.join(' · ') : 'kein laufendes Spiel';
+    ss.title = 'Fehlen die Positionen im Doppel, zeigt die Spielfeld-Ansicht nur das Aufschlagfeld. ' +
+      'BTS hat sie dann für dieses Spiel nicht (z. B. Zählung nicht über bup oder alte bup-Version).';
     document.getElementById('courtCount').textContent = courts.length + ' (' + courts.filter(function (c) { return c.match; }).length + ' belegt)';
     document.getElementById('matchCount').textContent = all.length + ' gespeichert, davon ' +
       all.filter(function (m) { return m.status === 'finished'; }).length + ' beendet';
