@@ -83,8 +83,10 @@ h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: 
 .now-head .free { color: rgba(255,255,255,0.75); }
 .now-head .badge { margin-left: auto; }
 .now-head .badge.live { background: #fff; color: var(--club); }
-.idle-last { padding: 8px 12px; font-size: 0.85rem; }
-.idle-last .muted { color: rgba(255,255,255,0.7); }
+.idle-last { padding: 6px 12px; font-size: 0.8rem; color: rgba(255,255,255,0.75); text-transform: uppercase; letter-spacing: 0.04em; }
+.now-row.last { font-size: 0.92rem; }
+.now-row.last .who { padding-top: 5px; padding-bottom: 5px; }
+.now-row.last.winner .names:last-child::after { content: " ✓"; }
 .now-row { flex: 1; display: flex; align-items: stretch; border-top: 1px solid rgba(255,255,255,0.18); }
 .now-row.winner .names { font-weight: 700; }
 .who { flex: 1; min-width: 0; padding: 7px 8px 7px 12px; display: flex; flex-direction: column; justify-content: center; }

@@ -87,12 +87,22 @@
       card.classList.add('idle');
       head.appendChild(el('span', 'free', 'frei'));
       card.appendChild(head);
+      // Zuletzt auf diesem Court gespielt: Disziplin, Spieler und Sätze
       var lastM = BL.match(state, c.last);
       if (lastM) {
-        var info = el('div', 'idle-last');
-        info.appendChild(el('span', 'muted', 'Zuletzt: '));
-        info.appendChild(document.createTextNode(lastM.name + ' · ' + resultLine(lastM)));
-        card.appendChild(info);
+        card.appendChild(el('div', 'idle-last', 'Zuletzt: ' + lastM.name));
+        ['home', 'away'].forEach(function (side) {
+          var row = el('div', 'now-row last ' + side + (lastM.winner === side ? ' winner' : ''));
+          var who = el('div', 'who');
+          var names = BL.players(lastM[side]);
+          if (!names.length) who.appendChild(el('span', 'names muted', 'N. N.'));
+          names.forEach(function (n) { who.appendChild(el('span', 'names', n)); });
+          row.appendChild(who);
+          lastM.sets.forEach(function (st) {
+            row.appendChild(el('span', 'set' + (st.winner === side ? ' won' : ''), String(st[side])));
+          });
+          card.appendChild(row);
+        });
       }
       return card;
     }
@@ -115,10 +125,6 @@
       card.appendChild(row);
     });
     return card;
-  }
-
-  function resultLine(m) {
-    return m.sets.map(function (s) { return s.home + ':' + s.away; }).join(', ') || '–';
   }
 
   function gameRow(m) {
