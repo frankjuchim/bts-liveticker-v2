@@ -207,6 +207,9 @@ h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; colo
 .field-foot .f-result { margin-left: auto; font-weight: 800; font-size: 1.1rem; }
 .field-foot .muted { color: rgba(255,255,255,0.7); }
 .field-card.finished .field { filter: saturate(0.6); }
+.field-card.idle .field { filter: saturate(0.4) brightness(0.85); }
+.f-idle { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: clamp(0.9rem, 5cqi, 2.4rem); font-weight: 700; color: rgba(255,255,255,0.85); text-transform: uppercase; letter-spacing: 0.08em; }
 
 /* Umschalter Karten/Spielfeld */
 .viewswitch { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }

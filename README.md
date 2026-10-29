@@ -271,6 +271,7 @@ zusehen, braucht es eine öffentliche Adresse mit HTTPS, z. B.:
 | `/spieler` | **Meine Spieler**, alle Spieler, Vereine, Statistik (nach dem Vorbild des EM-Tickers) |
 | `/ergebnis` | Overlay: Bauchbinde bei Spielende (`?mode=bar` Laufband, `?test=1` zum Einrichten) |
 | `/feld/<nr>` | Großes Spielfeld eines Courts, z. B. für einen Bildschirm in der Halle |
+| `/felder?cols=3` | Alle Courts als Spielfeld im Raster; `cols` = Spalten (die Breite ergibt sich daraus), `c=1,2` nur diese Courts, `frei=0` freie Courts ausblenden |
 | `/admin` | Mit Passwort: Verbindungsstatus, Overlay-Links, Erscheinungsbild/Logo/Link, Ergebnisse zurücksetzen |
 | `/api/state` | Aktueller Stand als JSON |
 

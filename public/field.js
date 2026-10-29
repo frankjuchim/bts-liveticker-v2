@@ -183,5 +183,19 @@
     return next.el;
   }
 
-  window.Field = { render: render };
+  // Leeres Spielfeld (freier Court) mit Text in der Mitte
+  function empty(courtNum, text) {
+    var card = el('article', 'field-card idle');
+    var head = el('div', 'field-head');
+    head.appendChild(el('span', 'court', 'Court ' + courtNum));
+    card.appendChild(head);
+    var f = el('div', 'field');
+    f.appendChild(court());
+    f.appendChild(el('div', 'f-idle', text || 'frei'));
+    card.appendChild(f);
+    card.appendChild(el('div', 'field-foot'));
+    return card;
+  }
+
+  window.Field = { render: render, empty: empty };
 })();

@@ -375,6 +375,7 @@
       ul.appendChild(link('/courts?layout=split&c=' + courts[0].num + ',' + courts[1].num, 'Overlay: zwei Courts links/rechts'));
     }
     ul.appendChild(link('/?view=field', 'Liveticker in der Spielfeld-Ansicht'));
+    ul.appendChild(link('/felder?cols=' + Math.min(3, Math.max(1, courts.length)), 'Alle Courts als Spielfeld (Spalten über ?cols=…, z. B. für einen Hallenbildschirm)'));
     ul.appendChild(link('/spieler', 'Spieler-Seite: Meine Spieler, alle Spieler, Vereine, Statistik'));
     ul.appendChild(link('/ergebnis', 'Overlay: Ergebnis-Einblendung bei Spielende (Test: /ergebnis?test=1)'));
     ul.appendChild(link('/ergebnis?mode=bar', 'Overlay: Laufband mit den letzten Ergebnissen'));
