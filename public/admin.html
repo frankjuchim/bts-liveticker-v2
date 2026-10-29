@@ -43,6 +43,10 @@
   .pv-row span { padding: 6px 14px; }
   .pv-row b { background: #fff; width: 44px; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; }
   .warn { color: var(--live); margin-top: 8px; }
+  .params { margin-top: 12px; }
+  .params summary { cursor: pointer; font-weight: 600; }
+  .params .ext-table td:first-child { white-space: nowrap; }
+  .params .ext-table td:last-child { font-weight: 400; white-space: normal; }
   .ext-help { margin-top: 6px; font-size: 0.88rem; font-weight: 400; color: var(--text); }
   .ext-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 10px 0; }
   .ext-table th, .ext-table td { padding: 5px 8px; border-bottom: 1px solid var(--line, rgba(127,127,127,0.25)); text-align: left; vertical-align: top; }
@@ -177,6 +181,25 @@
   <h2>Seiten &amp; Overlays</h2>
   <section class="panel">
     <ul class="links" id="links"></ul>
+    <details class="params" open>
+      <summary>Parameter für <code>/felder</code> (alle Courts als Spielfeld)</summary>
+      <p class="muted">Parameter an die Adresse hängen, mehrere mit <code>&amp;</code> verbinden –
+        z. B. <code>/felder?cols=3&amp;frei=0</code>.</p>
+      <table class="ext-table">
+        <thead><tr><th>Parameter</th><th>Wirkung</th><th>Standard</th></tr></thead>
+        <tbody>
+          <tr><td><code>cols=3</code></td><td>Anzahl Spalten; die Breite der Felder ergibt sich aus der Fensterbreite</td><td>2</td></tr>
+          <tr><td><code>c=1,2,5</code></td><td>nur diese Courts, in dieser Reihenfolge</td><td>alle</td></tr>
+          <tr><td><code>frei=0</code></td><td>freie Courts ausblenden (sonst als leeres Feld „frei“)</td><td>anzeigen</td></tr>
+          <tr><td><code>names=full</code></td><td>volle Vornamen statt „M. Muster“</td><td>abgekürzt</td></tr>
+          <tr><td><code>linger=5</code></td><td>beendetes Spiel noch so viele Minuten auf dem Court zeigen</td><td>5</td></tr>
+          <tr><td><code>gap=12</code></td><td>Abstand zwischen den Feldern in Pixeln</td><td>12</td></tr>
+          <tr><td><code>bg=000000</code></td><td>Hintergrundfarbe (Hex ohne #, oder <code>transparent</code>)</td><td>dunkel</td></tr>
+        </tbody>
+      </table>
+      <p class="muted" style="margin-bottom:0">Einzelner Court groß: <code>/feld/1</code> (gleiche Parameter <code>names</code>,
+        <code>linger</code>, <code>bg</code>; <code>zurueck=1</code> zeigt den Zurück-Knopf auch bei direktem Aufruf).</p>
+    </details>
   </section>
 
   <h2>Erscheinungsbild</h2>
