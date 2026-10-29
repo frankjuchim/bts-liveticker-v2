@@ -96,10 +96,10 @@ h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; colo
 .now-row .set { color: rgba(255,255,255,0.7); }
 .now-row .set.won { color: #fff; font-weight: 700; }
 .now-row .pts { width: 48px; background: #fff; color: var(--club); font-weight: 800; font-size: 1.3rem; }
-/* Ball am Punktestand: dieses Team schlägt auf (Aufschläger selbst nicht bekannt) */
-.now-row.serve-team .pts { position: relative; }
-.now-row.serve-team .pts::before { content: ""; position: absolute; left: 5px; top: 50%; width: 9px; height: 9px; margin-top: -4.5px;
-  border-radius: 50%; background: #ffd84d; box-shadow: 0 0 0 1.5px rgba(0,0,0,0.35); }
+/* Federball neben den Namen: dieses Team schlägt auf (Aufschläger selbst nicht bekannt) */
+.now-row.serve-team .who { position: relative; padding-right: 34px; }
+.now-row.serve-team .who::after { content: ""; position: absolute; right: 8px; top: 50%; width: 20px; height: 20px; margin-top: -10px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 15 4 3h16l-4 12'/%3E%3Cpath d='M10 15 9 3M14 15l1-12M12 15V3M5 8h14'/%3E%3Ccircle cx='12' cy='19' r='3.5' fill='%23ffffff'/%3E%3C/svg%3E") center / contain no-repeat; }
 
 .badge { font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; color: #fff; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
 .badge.live { background: var(--live); }

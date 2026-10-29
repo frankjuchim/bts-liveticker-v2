@@ -105,10 +105,9 @@ html, body {
 .set { width: 2.2em; color: var(--muted); font-size: 0.85em; }
 .set.won { color: var(--text); font-weight: 700; }
 .points { width: 2.3em; background: #fff; color: var(--club); font-weight: 800; font-size: 1.15em; }
-/* Ball am Punktestand: dieses Team schlägt auf (Aufschläger selbst nicht bekannt) */
-.serve-team .points { position: relative; }
-.serve-team .points::before { content: ""; position: absolute; left: 0.25em; top: 50%; width: 0.38em; height: 0.38em; margin-top: -0.19em;
-  border-radius: 50%; background: #ffd84d; box-shadow: 0 0 0 0.06em rgba(0,0,0,0.35); }
+/* Federball hinter den Namen: dieses Team schlägt auf (Aufschläger selbst nicht bekannt) */
+.serve-team .names::after { content: ""; display: inline-block; width: 0.85em; height: 0.85em; margin-left: 0.4em; vertical-align: -0.1em;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 15 4 3h16l-4 12'/%3E%3Cpath d='M10 15 9 3M14 15l1-12M12 15V3M5 8h14'/%3E%3Ccircle cx='12' cy='19' r='3.5' fill='%23ffffff'/%3E%3C/svg%3E") center / contain no-repeat; }
 
 /* Aufschläger (Punkt) und Rückschläger im Doppel (unterstrichen) */
 .name.srv::before { content: ""; display: inline-block; width: 0.4em; height: 0.4em; margin: 0 0.35em 0.1em 0; border-radius: 50%; background: #fff; vertical-align: middle; }
