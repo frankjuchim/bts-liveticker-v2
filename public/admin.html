@@ -43,6 +43,7 @@
   .pv-row span { padding: 6px 14px; }
   .pv-row b { background: #fff; width: 44px; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; }
   .warn { color: var(--live); margin-top: 8px; }
+  .ext-help { margin-top: 6px; font-size: 0.88rem; font-weight: 400; color: var(--text); }
   .ext-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 10px 0; }
   .ext-table th, .ext-table td { padding: 5px 8px; border-bottom: 1px solid var(--line, rgba(127,127,127,0.25)); text-align: left; vertical-align: top; }
   .ext-table thead th { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
@@ -109,7 +110,13 @@
       <dt>Letzte Daten</dt><dd id="lastMsg">–</dd>
       <dt>Courts</dt><dd id="courtCount">–</dd>
       <dt>Spiele</dt><dd id="matchCount">–</dd>
-      <dt>BTS-Erweiterung</dt><dd id="extState">–</dd>
+      <dt>BTS-Erweiterung</dt><dd><span id="extState">–</span>
+        <div id="extHelp" class="ext-help" hidden>
+          Auf dem <b>Rechner, auf dem BTS läuft</b>, im BTS-Verzeichnis ausführen und BTS danach neu starten:
+          <pre class="cmd">curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/bts-patch/apply.sh | bash</pre>
+          <span class="muted">Derselbe Befehl installiert die Erweiterung oder aktualisiert eine ältere Version.
+          Nach einem BTS-Update (<code>git pull</code>) bleibt sie erhalten. <a href="#extSetup">Was bringt die Erweiterung?</a></span>
+        </div></dd>
       <dt class="diag" hidden>Aufschlagdaten</dt><dd id="srvState" class="muted diag" hidden>–</dd>
       <dt>Adresse für BTS</dt><dd><code id="wsUrl"></code></dd>
     </dl>
@@ -125,7 +132,7 @@
       Ticker-Adresse <code class="wsUrl"></code> und Ticker-Passwort
       <code class="secret" id="tickerPw" title="Klicken zum Anzeigen">•••••••• (anzeigen)</code> eintragen
       (änderbar unter <a href="#tpwSection">„Ticker-Passwort für BTS“</a>).</p>
-    <p style="margin-bottom:0"><b>2. Optional: BTS-Erweiterung (v2)</b> – der Liveticker funktioniert auch ohne sie.
+    <p style="margin-bottom:0" id="extSetup"><b>2. Optional: BTS-Erweiterung (v2)</b> – der Liveticker funktioniert auch ohne sie.
       Die Erweiterung lässt BTS ein paar zusätzliche Daten an den Ticker schicken:</p>
     <table class="ext-table">
       <thead><tr><th></th><th>ohne Erweiterung</th><th>mit Erweiterung v2</th></tr></thead>
@@ -315,17 +322,19 @@
     document.getElementById('tName').textContent = (state && state.tournament.name) || '–';
     document.getElementById('lastMsg').textContent = fmt(b && b.lastMessageAt);
     var ext = document.getElementById('extState');
-    if (state && state.btsExtension === true && state.upcoming) {
-      ext.textContent = 'aktiv (v2): Aufschlag, Vereine, Spieldauer, Als Nächstes';
-      ext.className = 'ok';
-    } else if (state && state.btsExtension === true) {
-      ext.textContent = 'ältere Version (nur Aufschlag) – für Vereine, Spieldauer und „Als Nächstes“ den Befehl unter „Einrichtung in BTS“, Schritt 2, erneut ausführen';
+    var v = state ? state.btsExtVersion : null;
+    if (v == null && state) v = state.upcoming ? 2 : (state.btsExtension === true ? 1 : (state.btsExtension === false ? 0 : null));
+    var latest = (state && state.btsExtLatest) || 2;
+    if (v == null) { ext.textContent = 'noch nicht erkennbar – sobald ein Spiel auf einem Court liegt'; ext.className = 'muted'; }
+    else if (v >= latest) { ext.textContent = 'aktuell (v' + v + '): Aufschlag, Vereine, Spieldauer, Als Nächstes'; ext.className = 'ok'; }
+    else if (v > 0) {
+      ext.textContent = 'veraltet (v' + v + ', aktuell ist v' + latest + ') – bitte auf dem BTS-Rechner aktualisieren:';
       ext.className = 'bad';
-    } else if (state && state.btsExtension === false) {
-      ext.textContent = 'nicht aktiv – BTS-Erweiterung fehlt (siehe „Einrichtung in BTS“, Schritt 2)';
+    } else {
+      ext.textContent = 'nicht installiert – ohne sie fehlen Aufschlag, Spielfeld-Ansicht, Vereine, Spieldauer und „Als Nächstes“:';
       ext.className = 'bad';
     }
-    else { ext.textContent = 'noch nicht erkennbar – sobald ein Spiel auf einem Court liegt'; ext.className = 'muted'; }
+    document.getElementById('extHelp').hidden = v == null || v >= latest;
     var courts = (state && state.courts) || [];
     var all = (state && state.matches) || [];
     checkReconnect(state);
