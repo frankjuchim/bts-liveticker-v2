@@ -96,6 +96,8 @@
         lab.style.left = (p.x / W * 100) + '%';
         lab.style.top = (p.y / H * 100) + '%';
         if (sv && sv.server.side === side && sv.server.player === i) lab.classList.add('srv');
+        // Aufschläger unbekannt (keine Positionen von BTS): aufschlagendes Team umrandet
+        if (sv && sv.server.side === side && sv.server.player == null && list.length > 1) lab.classList.add('srv-team');
         if (sv && sv.receiver.side === side && sv.receiver.player === i && list.length > 1) lab.classList.add('rcv');
         if (m.winner === side) lab.classList.add('winner');
         f.appendChild(lab);

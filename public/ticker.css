@@ -179,6 +179,7 @@ h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; colo
 }
 /* Aufschläger nur hinterlegt – Punkt und Unterstrich braucht es hier nicht, der Pfeil zeigt die Richtung */
 .fp.srv { background: #ffd84d; color: #1a1a1a; font-weight: 700; }
+.fp.srv-team { box-shadow: inset 0 0 0 2px #ffd84d; }
 .fp.winner { font-weight: 700; }
 .fp.winner::after { content: " ✓"; }
 .fscore {
