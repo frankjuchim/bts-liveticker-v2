@@ -325,6 +325,7 @@
       else if (m.posFrom === 'derived') t = '✓ (Positionen vom Ticker fortgeschrieben)';
       else if (m.posFrom === 'empty') t = 'Positionen leer – in bup Aufschläger/Rückschläger nicht ausgewählt';
       else t = 'BTS schickt keine Positionen';
+      if (m.posFrom !== 'bts' && m.posRaw) t += ' [BTS: ' + m.posRaw + ']';
       srvInfo.push('Court ' + m.court + ': ' + t);
     });
     var ss = document.getElementById('srvState');
