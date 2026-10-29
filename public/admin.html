@@ -805,7 +805,7 @@
     upd.installed.textContent = ver(d.installed);
     upd.changes.replaceChildren();
     upd.start.hidden = true;
-    upd.actions.hidden = d.mode === 'docker' || d.mode === 'none';
+    upd.actions.hidden = (d.mode === 'docker' && !d.installed) || d.mode === 'none';
     document.getElementById('updVersions').hidden = upd.actions.hidden;
     var l = d.latest;
     if (d.error) upd.latest.textContent = 'nicht abrufbar (' + d.error + ')';
@@ -825,7 +825,16 @@
       }
     }
     var outdated = l && l.behind !== 0;
-    if (d.mode === 'systemd') {
+    if (d.mode === 'watchtower') {
+      // Watchtower prüft selbst, ob es ein neueres Image gibt – Knopf auch ohne Antwort von GitHub
+      upd.start.hidden = !outdated && !!(l && l.behind === 0);
+      upd.text.textContent = 'Docker: Das Update lässt Watchtower das neue Image holen und den Liveticker-Container neu starten ' +
+        '(etwa eine Minute nicht erreichbar, BTS verbindet sich danach von selbst wieder). Einstellungen, Logo, Passwörter und ' +
+        'Ergebnisse bleiben im Datenordner erhalten. Ein neues Image entsteht wenige Minuten nach jeder Änderung auf GitHub.';
+    } else if (d.mode === 'docker' && d.installed) {
+      upd.text.replaceChildren(document.createTextNode('Der Liveticker läuft als Docker-Container ohne Update-Helfer (Watchtower). ' +
+        'Aktualisieren im Ordner mit der docker-compose.yml:'), el('pre', 'cmd', 'docker compose pull && docker compose up -d'));
+    } else if (d.mode === 'systemd') {
       upd.start.hidden = !outdated;
       upd.text.textContent = 'Das Update holt den neuesten Stand von GitHub und startet den Liveticker neu (etwa eine Minute ' +
         'nicht erreichbar, BTS verbindet sich danach von selbst wieder). Einstellungen, Logo, Passwörter und Ergebnisse bleiben erhalten.';
@@ -876,7 +885,10 @@
               try { sessionStorage.setItem('updDone', '1'); } catch (e) { /* egal */ }
               setTimeout(function () { location.reload(); }, 1500);
             } else {
-              updMsg('Update fehlgeschlagen (' + res[1] + ') – siehe Protokoll. Der Liveticker läuft mit dem bisherigen Stand weiter.', 'bad');
+              updMsg(res[1] === 'noupdate'
+                ? 'Kein neueres Image gefunden – GitHub baut es nach einer Änderung in einigen Minuten. Bitte später erneut versuchen.'
+                : 'Update fehlgeschlagen (' + res[1] + ') – siehe Protokoll. Der Liveticker läuft mit dem bisherigen Stand weiter.',
+                res[1] === 'noupdate' ? 'muted' : 'bad');
               following = false;
               upd.start.disabled = false;
               upd.check.disabled = false;

@@ -1,0 +1,34 @@
+# BTS Liveticker mit Docker – Einrichtung siehe README („Docker“) oder deploy/docker-install.sh.
+# Passwörter stehen in der Datei .env daneben (Vorlage: .env.example).
+services:
+  liveticker:
+    image: ghcr.io/frankjuchim/bts-liveticker-v2:latest
+    container_name: bts-liveticker
+    restart: unless-stopped
+    ports:
+      - "${PORT:-80}:8080"            # Liveticker unter http://<server>/ (Port in .env änderbar)
+    environment:
+      TICKER_PASSWORD: ${TICKER_PASSWORD:-}   # Passwort für BTS (auch im Admin-Panel änderbar)
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}     # leer: Standard „btsliveadmin“, im Admin-Panel änderbar
+      TITLE: ${TITLE:-Badminton}
+      SUBTITLE: ${SUBTITLE:-Turnier-Liveticker}
+      # Update-Knopf im Admin-Panel: über Watchtower (unten)
+      UPDATE_URL: http://watchtower:8080/v1/update
+      UPDATE_TOKEN: ${UPDATE_TOKEN:?UPDATE_TOKEN in .env setzen (z. B. openssl rand -hex 16)}
+    volumes:
+      - ticker-data:/data              # Ergebnisse, Einstellungen, Logo, Passwörter
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  # Holt auf Knopfdruck im Admin-Panel das neue Image und startet den Liveticker neu.
+  # Nur dieser Helfer braucht Zugriff auf Docker, der Liveticker selbst nicht.
+  watchtower:
+    image: ghcr.io/nicholas-fedor/watchtower:latest
+    container_name: bts-liveticker-watchtower
+    restart: unless-stopped
+    command: --label-enable --cleanup --http-api-endpoints update --http-api-token ${UPDATE_TOKEN}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  ticker-data:

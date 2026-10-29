@@ -528,7 +528,7 @@ function handleUpdateInfo(req, res, check) {
     'Cache-Control': 'no-store',
   });
   // Docker (z. B. CapRover) oder unbekannte Installation: Update nicht von hier – GitHub nicht fragen
-  if (!check || info.mode === 'docker' || info.mode === 'none') return done(null, null);
+  if (!check || info.mode === 'none' || (info.mode === 'docker' && !info.installed)) return done(null, null);
   updater.latest(check === 'force').then((l) => done(l, null), (e) => done(null, String(e.message || e)));
 }
 
@@ -662,3 +662,19 @@ server.on('upgrade', (req, socket, head) => {
 
 loadState();
 server.listen(PORT, () => console.log(`BTS Liveticker läuft auf Port ${PORT}`));
+
+// Beenden (systemd, Docker): Stand sofort speichern und ohne Wartezeit beenden.
+// Im Container läuft Node als Prozess 1 und beachtet SIGTERM sonst nicht.
+function shutdown(signal) {
+  console.log('Beende (' + signal + ')');
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(STATE_FILE + '.tmp', JSON.stringify(data));
+    fs.renameSync(STATE_FILE + '.tmp', STATE_FILE);
+  } catch (e) {
+    console.warn('Speichern beim Beenden fehlgeschlagen:', e.message);
+  }
+  process.exit(0);
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

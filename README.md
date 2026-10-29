@@ -1,7 +1,8 @@
 # BTS Liveticker
 
 Öffentlicher **Turnier-Liveticker** und **Stream-Overlays (OBS)** für die Badminton-Turniersoftware
-**BTS** (Badminton Tournament System). Läuft als kleiner Container auf einem **Proxmox**-Server.
+**BTS** (Badminton Tournament System). Läuft als kleiner Container auf einem **Proxmox**-Server, mit
+**Docker** auf jedem Linux-Server oder direkt auf Debian/Ubuntu.
 
 - Liveticker für Zuschauer: alle Courts mit Spielstand, Ergebnisliste, Suche nach Spieler/Disziplin
 - Transparente Overlays für den Stream, einzeln pro Court oder mehrere Courts auf einmal
@@ -116,6 +117,33 @@ Welche Version läuft? `pct exec <CTID> -- git -C /opt/bts-liveticker log -1 --f
 
 Debian-Updates im Container (Sicherheitsupdates) gehen wie üblich:
 `pct exec <CTID> -- bash -c "apt update && apt -y upgrade"`
+
+## Installation mit Docker
+
+Für jeden Linux-Server mit Docker (amd64 oder arm64, z. B. auch Raspberry Pi 4/5). Das fertige
+Image `ghcr.io/frankjuchim/bts-liveticker-v2` entsteht bei jeder Änderung automatisch auf GitHub.
+
+**Mit einem Befehl** (legt den Ordner `bts-liveticker` an, erzeugt Passwörter und startet alles):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/deploy/docker-install.sh | bash
+```
+
+**Oder von Hand:** [`docker-compose.yml`](docker-compose.yml) und [`.env.example`](.env.example) in einen
+Ordner legen, `.env.example` in `.env` umbenennen, `UPDATE_TOKEN` (z. B. `openssl rand -hex 16`) und
+`TICKER_PASSWORD` eintragen, dann `docker compose up -d`.
+
+- Liveticker auf Port 80 (in `.env` über `PORT` änderbar), im Container läuft er ohne root-Rechte.
+- Ergebnisse, Einstellungen, Logo und Passwörter liegen im Docker-Volume `ticker-data` und bleiben
+  bei Updates erhalten.
+- **Update per Knopf im Admin-Panel:** Neben dem Liveticker läuft
+  [Watchtower](https://github.com/nicholas-fedor/watchtower). Der Knopf ruft dessen Schnittstelle auf
+  (geschützt mit `UPDATE_TOKEN`); Watchtower holt das neue Image und startet den Liveticker neu.
+  Nur Watchtower hat Zugriff auf Docker, der Liveticker selbst nicht. Ohne Watchtower:
+  `docker compose pull && docker compose up -d`.
+- Einstellungen wie `TITLE`, `SUBTITLE`, `ADMIN_PASSWORD` in `.env`, danach `docker compose up -d`.
+- HTTPS und `wss://` wie unter [„Von außen erreichbar machen“](#von-außen-erreichbar-machen) über
+  einen Reverse-Proxy davor (WebSocket weiterleiten).
 
 ## Admin-Panel
 
