@@ -84,6 +84,7 @@
     var sv = m.status === 'finished' ? null : m.service;
     var pos = sv && sv.positions;
     var spots = { home: [], away: [] };
+    var labels = { home: [], away: [] };
 
     ['home', 'away'].forEach(function (side) {
       var list = m[side] || [];
@@ -100,6 +101,7 @@
         if (sv && sv.server.side === side && sv.server.player == null && list.length > 1) lab.classList.add('srv-team');
         if (sv && sv.receiver.side === side && sv.receiver.player === i && list.length > 1) lab.classList.add('rcv');
         if (m.winner === side) lab.classList.add('winner');
+        labels[side][i] = lab;
         f.appendChild(lab);
       });
     });
@@ -120,20 +122,32 @@
       var mk = svg('marker', { id: 'ah-' + opts.uid, viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' }, defs);
       svg('path', { d: 'M0,0 L10,5 L0,10 z' }, mk);
       var dir = from.x < to.x ? 1 : -1;
-      var gap = fields ? 0 : 120;   // ohne Namen direkt aus der Feldmitte
-      var x1 = from.x + dir * gap;
-      var x2 = to.x - dir * gap;
-      var y1 = from.y + (fields ? 0 : (to.y > from.y ? 30 : -30));
-      var y2 = to.y - (fields ? 0 : (to.y > from.y ? 30 : -30));
+      // Start mitten unter dem Namen des Aufschlägers (der Pfeil liegt unter den Namen),
+      // Ende kurz vor dem Namen des Rückschlägers – passend zur tatsächlichen Breite
+      var x1 = from.x;
+      var y1 = from.y;
+      var y2 = to.y;
+      var target = !fields && labels[sv.receiver.side][sv.receiver.player];
+      var line = function (half) {
+        var x2 = to.x - dir * (half + 14);
+        return 'M' + x1 + ',' + y1 + ' Q' + (W / 2) + ',' + ((y1 + y2) / 2 - 170) + ' ' + x2 + ',' + y2;
+      };
       var path = svg('path', {
-        d: 'M' + x1 + ',' + y1 + ' Q' + (W / 2) + ',' + ((y1 + y2) / 2 - 170) + ' ' + x2 + ',' + y2,
+        d: line(target ? 110 : 0),
         'marker-end': 'url(#ah-' + opts.uid + ')',
         'vector-effect': 'non-scaling-stroke',
       }, a);
+      if (target) {
+        // Breite erst nach dem Einfügen messbar (Feldkoordinaten: W Einheiten = Feldbreite)
+        requestAnimationFrame(function () {
+          if (!f.clientWidth || !target.offsetWidth) return;
+          path.setAttribute('d', line(target.offsetWidth / 2 / f.clientWidth * W));
+        });
+      }
       // bei neuem Ballwechsel einzeichnen
       if (fields) svg('circle', { cx: x1, cy: y1, r: 14, class: 'f-shuttle' }, a);
       if (!prev || prev.arrowKey !== JSON.stringify(sv)) once(path, 'draw');
-      f.appendChild(a);
+      f.insertBefore(a, f.querySelector('.fp'));   // unter den Namen
     }
 
     // Punktestand am Netz

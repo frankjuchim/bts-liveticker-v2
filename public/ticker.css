@@ -171,6 +171,7 @@ h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; colo
   padding: 0.2em 0.5em;
   border-radius: 6px;
   background: rgba(0,0,0,0.45);
+  background: color-mix(in srgb, #000 45%, var(--court));   /* deckend: der Pfeil läuft darunter */
   font-size: clamp(0.7rem, 3.2cqi, 1.4rem);
   line-height: 1.2;
   white-space: nowrap;
