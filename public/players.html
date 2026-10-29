@@ -27,6 +27,7 @@
     <button type="button" data-tab="vereine">Vereine</button>
     <button type="button" data-tab="statistik">Statistik</button>
   </nav>
+  <p class="sched-note pl-sched" id="plSched" hidden></p>
 
   <section data-panel="meine">
     <p class="muted" id="meineHint">Noch niemandem gefolgt. Unter „Alle Spieler“ oder „Vereine“ den Stern antippen – oder im
@@ -53,6 +54,7 @@
 </main>
 
 <script src="/live.js"></script>
+<script src="/schedule.js"></script>
 <script src="/follow.js"></script>
 <script>
 (function () {
@@ -62,6 +64,13 @@
   var last = null;
   var tab = (location.hash || '#meine').slice(1);
   var pq = document.getElementById('pq');
+  var sched = null;   // Zeitplan-Schätzung (schedule.js)
+
+  // „ca. 14:45“ (geschätzt) bzw. „14:20“ (angesetzt)
+  function when(u) {
+    var eta = sched && sched.eta[u.id];
+    return eta ? 'ca. ' + Schedule.clock(eta) : u.time;
+  }
 
   // ---- Daten je Spieler aus Spielen und „Als Nächstes“ zusammentragen
   function collect(state) {
@@ -104,7 +113,8 @@
       return { cls: 'live', text: (live.m.status === 'live' ? 'Spielt auf Court ' : 'Aufruf Court ') + live.m.court + sc };
     }
     var up = p.items.filter(function (x) { return x.u; })[0];
-    if (up) return { cls: up.u.state === 'preparation' ? 'called' : 'next', text: (up.u.state === 'preparation' ? 'Gleich dran' : 'Als Nächstes') + (up.u.time ? ' · ' + up.u.time + ' Uhr' : '') };
+    if (up) return { cls: up.u.state === 'preparation' ? 'called' : 'next', text: (up.u.state === 'preparation' ? 'Gleich dran' : 'Als Nächstes') + (when(up.u) ? ' · ' + when(up.u) + ' Uhr' : '') +
+      (sched && sched.eta[up.u.id] && up.u.time ? ' (Plan ' + up.u.time + ')' : '') };
     return null;
   }
 
@@ -121,7 +131,7 @@
     var row = el('div', 'pl-item');
     var tag;
     if (x.u) {
-      tag = el('span', 'badge ' + (x.u.state === 'preparation' ? 'called' : 'next'), x.u.time || 'geplant');
+      tag = el('span', 'badge ' + (x.u.state === 'preparation' ? 'called' : 'next'), when(x.u) || 'geplant');
     } else if (x.m.status === 'live' || x.m.status === 'called') {
       tag = el('span', 'badge live', 'Court ' + x.m.court);
     } else if (x.m.status === 'finished') {
@@ -311,6 +321,12 @@
 
   function render(state) {
     last = state;
+    sched = Schedule.compute(state);
+    var note = document.getElementById('plSched');
+    note.hidden = !Object.keys(sched.eta).length;
+    note.textContent = (sched.delay != null ? 'Zeitplan: ' + Schedule.delayText(sched.delay) + '. ' : '') +
+      'Zeiten mit „ca.“ sind unverbindliche Schätzungen aus dem bisherigen Turnierverlauf – ' +
+      'maßgeblich ist allein der Aufruf durch die Turnierleitung.';
     var t = (state && state.tournament) || {};
     document.getElementById('tName').textContent = t.name ? t.name + ' – Spieler' : 'Spieler';
     var players = collect(state);
@@ -340,6 +356,7 @@
   Follow.onChange(function () { if (last) render(last); });
   showTab(tab);
   BL.connect(render);
+  setInterval(function () { if (last) render(last); }, 60000);
 })();
 </script>
 </body>

@@ -135,7 +135,9 @@
               return m.winner === 'away' ? s.away + ':' + s.home : s.home + ':' + s.away;   // aus Sicht des Siegers
             }).join(', ') + ')');
         } else if (cur.s === 'preparation' && before !== 'preparation') {
-          toast('Gleich dran: ' + m.name, vs(m) + (m.time ? ' · geplant ' + m.time + ' Uhr' : ''));
+          var eta = window.Schedule && window.Schedule.compute(state).eta[m.id];
+          toast('Gleich dran: ' + m.name, vs(m) + (eta ? ' · voraussichtlich ca. ' + window.Schedule.clock(eta) + ' Uhr (Schätzung)'
+            : (m.time ? ' · geplant ' + m.time + ' Uhr' : '')));
         }
       });
     }

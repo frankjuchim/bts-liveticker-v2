@@ -253,3 +253,23 @@ test('Spieldauer ohne BTS-Erweiterung: vom ersten Spielstand bis Spielende', () 
   store.applyMatchUpdate(s, { _id: 'm1', s: [[21, 15], [21, 18]] }, '2026-11-01T10:25:00.000Z');
   assert.strictEqual(store.viewOne(s, 'm1').duration, 25 * 60000);
 });
+
+test('Zeitplan: Ansetzung wird gemerkt, bis das Spiel aufgerufen wird', () => {
+  const s = store.emptyStore();
+  const up = { _id: 'u1', n: 'HE', p0: ['A'], p1: ['B'], t: '14:20', dt: '2026-10-29', st: 'scheduled' };
+  store.applyTset(s, { courts: [{ _id: 'c1', num: 1 }], matches: [], upcoming: [up] }, '2026-10-29T12:00:00.000Z');
+  assert.deepStrictEqual(s.planned.u1, { time: '14:20', date: '2026-10-29' });
+  store.applyTset(s, {
+    courts: [{ _id: 'c1', num: 1, match_id: 'u1' }],
+    matches: [{ _id: 'u1', n: 'HE', p0: ['A'], p1: ['B'], s: [] }],
+    upcoming: [],
+  }, '2026-10-29T13:45:00.000Z');
+  const m = store.view(s).matches[0];
+  assert.deepStrictEqual(m.planned, { time: '14:20', date: '2026-10-29' });
+  assert.strictEqual(m.calledAt, '2026-10-29T13:45:00.000Z');
+  assert.strictEqual(m.doubles, false);
+  assert.strictEqual(s.planned.u1, undefined);
+  // bleibt nach Neustart erhalten
+  const r = store.restore(JSON.parse(JSON.stringify(s)));
+  assert.deepStrictEqual(store.view(r).matches[0].planned, { time: '14:20', date: '2026-10-29' });
+});

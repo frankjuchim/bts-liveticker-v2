@@ -23,6 +23,8 @@
     <a class="t-link" id="tLink" target="_blank" rel="noopener" hidden>Alle Spiele auf turnier.de ›</a>
   </header>
 
+  <a class="sched-bar" id="schedBar" href="#upSec" hidden></a>
+
   <div class="tools">
     <input type="search" id="q" placeholder="Spieler oder Disziplin suchen …" autocomplete="off">
     <label class="toggle"><input type="checkbox" id="showIdle"> freie Courts zeigen</label>
@@ -56,6 +58,11 @@
 
   <section id="upSec" hidden>
     <h2>Als Nächstes</h2>
+    <div class="sched-note" id="schedNote" hidden>
+      <p>Die Zeiten mit „ca.“ sind <b>unverbindliche Schätzungen</b> aus dem bisherigen Turnierverlauf.
+        Maßgeblich ist allein der Aufruf durch die Turnierleitung – bitte rechtzeitig in der Halle sein.</p>
+      <details><summary>Wie wird geschätzt?</summary><p id="schedBasis"></p></details>
+    </div>
     <div class="upcoming" id="upList"></div>
     <button class="more" id="upMore" hidden>Weitere Spiele anzeigen</button>
   </section>
@@ -74,6 +81,7 @@
 
 <script src="/live.js"></script>
 <script src="/field.js"></script>
+<script src="/schedule.js"></script>
 <script src="/follow.js"></script>
 <script>
 (function () {
@@ -89,6 +97,7 @@
   q.value = BL.params.get('q') || '';
 
   var upLimit = 8;
+  var sched = null;   // Zeitplan-Schätzung (schedule.js)
 
   function matches(m, term) {
     if (!term) return true;
@@ -199,7 +208,15 @@
     var row = el('article', 'up ' + u.state + (Follow.involves(u) ? ' followed' : ''));
     var when = el('div', 'up-when');
     if (u.state === 'preparation') when.appendChild(el('span', 'badge called', 'Gleich'));
-    if (u.time) when.appendChild(el('span', 'up-time', u.time));
+    var eta = sched && sched.eta[u.id];
+    if (eta) {
+      var e = el('span', 'up-eta', 'ca. ' + Schedule.clock(eta));
+      e.title = 'Voraussichtlicher Beginn (Schätzung, unverbindlich)';
+      when.appendChild(e);
+      if (u.time) when.appendChild(el('span', 'up-plan', 'Plan ' + u.time));
+    } else if (u.time) {
+      when.appendChild(el('span', 'up-time', u.time));
+    }
     row.appendChild(when);
     var mid = el('div', 'up-main');
     mid.appendChild(el('div', 'up-name', u.name + (u.num ? ' · Spiel ' + u.num : '')));
@@ -306,6 +323,7 @@
 
   function render(state) {
     last = state;
+    sched = Schedule.compute(state);
     renderFollow(state);
     Follow.check(state);
     var t = (state && state.tournament) || {};
@@ -362,8 +380,14 @@
     while (now.children.length > cards.length) now.removeChild(now.lastChild);
     document.getElementById('nowEmpty').hidden = now.children.length > 0;
 
-    // Als Nächstes (nur mit BTS-Erweiterung v2)
+    // Als Nächstes (nur mit BTS-Erweiterung v2) – mit geschätztem Beginn und Verzug
     var up = (state && state.upcoming) || null;
+    var bar = document.getElementById('schedBar');
+    bar.hidden = !(sched && sched.delay != null);
+    if (!bar.hidden) bar.textContent = 'Zeitplan: ' + Schedule.delayText(sched.delay) + ' (geschätzt)';
+    document.getElementById('schedNote').hidden = !(sched && Object.keys(sched.eta).length);
+    if (sched) document.getElementById('schedBasis').textContent = 'Grundlage: ' + Schedule.basisText(sched) +
+      '. Aufrufe außer der Reihe, Verletzungspausen, lange Spiele oder Pausen im Zeitplan sind nicht vorhersehbar.';
     document.getElementById('upSec').hidden = !up;
     if (up) {
       var ups = up.filter(function (u) { return matches(u, term); });
@@ -454,6 +478,7 @@
     Follow.askNotify(function () { rerender(); });
   });
   setInterval(updateConn, 5000);
+  setInterval(rerender, 60000);   // Schätzung mit der Uhr fortschreiben
 
   BL.connect(render);
 })();

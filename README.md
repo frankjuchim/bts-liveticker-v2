@@ -11,6 +11,10 @@
 - Mit einer kleinen [BTS-Erweiterung](docs/BTS-UPGRADE.md), die **auf der BTS-Maschine**
   eingespielt wird: Aufschläger/Rückschläger, Spielfeld-Ansicht wie in bup, **Vereine**,
   **Spieldauer** und **„Als Nächstes“** (Spiele in Vorbereitung und geplante Spiele)
+  mit **Zeitplan-Schätzung**: aktueller Verzug zum Zeitplan (aus den zuletzt aufgerufenen
+  Spielen) und voraussichtlicher Beginn der nächsten Spiele (aus der bisherigen Courtbelegung,
+  Einzel/Doppel getrennt, der Reihenfolge der Ansetzung und den Pausen der Spieler) – auf der
+  Seite als unverbindliche Schätzung gekennzeichnet
 - Titel, Farbe und Logo im Admin-Panel einstellbar; Turniername und Turnierlogo kommen aus BTS
 - Keine Datenbank, keine Cloud: Node.js + eine JSON-Datei
 

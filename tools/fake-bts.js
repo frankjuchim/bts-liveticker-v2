@@ -56,7 +56,7 @@ function newMatch() {
 
 // Warteschlange der nächsten Spiele (wie liveticker_upcoming in BTS)
 const queue = [];
-let clock = Date.now();
+let clock = Date.now() - 40 * 60000;   // Turnier liegt etwas hinter dem Plan
 function refill() {
   while (queue.length < 10) {
     clock += 12 * 60000;
