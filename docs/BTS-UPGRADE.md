@@ -9,7 +9,20 @@ Liveticker zusätzlich
 - die **Vereine** der Spieler anzeigt (sonst die Nation) – auch zum Folgen ganzer Vereine,
 - die **Spieldauer** aus bup anzeigt (Ergebnisse, Statistik),
 - **„Als Nächstes“** zeigt: die Spiele in Vorbereitung und die geplanten Spiele mit Uhrzeit –
-  auch auf der Seite „Meine Spieler“ und für Hinweise „Gleich dran“.
+  auch auf der Seite „Meine Spieler“ und für Hinweise „Gleich dran“,
+- daraus den **Verzug zum Zeitplan** und den **voraussichtlichen Beginn** der nächsten Spiele
+  schätzt (als unverbindliche Schätzung gekennzeichnet).
+
+| Funktion | ohne Erweiterung | mit Erweiterung v2 |
+| --- | --- | --- |
+| Spielstände, Ergebnisse, Overlays, Ergebnis-Einblendung | ✓ | ✓ |
+| Spielern folgen, Hinweise bei Aufruf und Spielende, Spielerseite | ✓ | ✓ |
+| Aufschläger (Punkt) und Rückschläger (unterstrichen) | – | ✓ |
+| Spielfeld-Ansicht wie in bup | – | ✓ |
+| Vereine der Spieler (anzeigen, Vereinen folgen) | – | ✓ |
+| Spieldauer | geschätzt (ab erstem Punkt) | genau (aus bup) |
+| „Als Nächstes“: Spiele in Vorbereitung und angesetzte Spiele | – | ✓ |
+| Verzug zum Zeitplan und voraussichtlicher Beginn (Schätzung) | – | ✓ |
 
 Ohne Erweiterung funktioniert der Liveticker ganz normal, nur ohne diese Angaben (die
 Spieldauer schätzt er dann selbst vom ersten Punkt bis zum Spielende).

@@ -191,10 +191,29 @@ In BTS: Turnier bearbeiten → **Ticker** aktivieren →
 
 Auf `http://<IP>/admin` steht danach „verbunden“. Dort gibt es auch alle Overlay-Links.
 
-### Aufschläger/Rückschläger (optional)
+### BTS-Erweiterung v2 (optional)
 
-Dafür braucht **BTS** eine kleine Erweiterung. Sie wird **nicht hier im Liveticker-Container**
-eingespielt, sondern **auf der Maschine, auf der BTS läuft** – dort im BTS-Verzeichnis:
+Der Liveticker funktioniert mit jedem unveränderten BTS. Eine kleine Erweiterung lässt BTS
+zusätzliche Daten mitschicken, die es ohnehin kennt:
+
+| Funktion | ohne Erweiterung | mit Erweiterung v2 |
+| --- | --- | --- |
+| Spielstände, Ergebnisse, Overlays, Ergebnis-Einblendung | ✓ | ✓ |
+| Spielern folgen, Hinweise bei Aufruf und Spielende, Spielerseite | ✓ | ✓ |
+| Aufschläger (Punkt) und Rückschläger (unterstrichen) | – | ✓ |
+| Spielfeld-Ansicht wie in bup | – | ✓ |
+| Vereine der Spieler (anzeigen, Vereinen folgen) | – | ✓ |
+| Spieldauer | geschätzt (ab erstem Punkt) | genau (aus bup) |
+| „Als Nächstes“: Spiele in Vorbereitung und angesetzte Spiele | – | ✓ |
+| Verzug zum Zeitplan und voraussichtlicher Beginn (Schätzung) | – | ✓ |
+
+Geändert wird nur die Datei `bts/ticker_conn.js` (die Ticker-Anbindung): BTS schickt
+zusätzliche Felder mit, Bedienung, Datenbank und alle anderen Funktionen von BTS bleiben
+unverändert. Die Änderung wird als lokaler Git-Commit gespeichert, bleibt bei BTS-Updates
+(`git pull`) erhalten und lässt sich wieder entfernen.
+
+Sie wird **nicht hier im Liveticker-Container** eingespielt, sondern **auf der Maschine, auf
+der BTS läuft** – dort im BTS-Verzeichnis, danach BTS neu starten:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/bts-patch/apply.sh | bash
@@ -299,6 +318,26 @@ Spielenden kommen nacheinander.
 | `test=1` | sofort das letzte Ergebnis zeigen (zum Einrichten) |
 | `names=full`, `scale`, `bg` | wie bei den anderen Overlays |
 
+### Zeitplan-Schätzung
+
+Mit der BTS-Erweiterung v2 zeigt der Ticker oben den **Verzug zum Zeitplan** („ca. 25 min
+Verzug“) und bei „Als Nächstes“ den **voraussichtlichen Beginn** jedes Spiels („ca. 14:45“,
+darunter die angesetzte Zeit), ebenso auf der Spielerseite und in den Hinweisen für gefolgte
+Spieler. Grundlage:
+
+- **Verzug:** Median aus Aufruf minus Ansetzung der zuletzt aufgerufenen Spiele (bis zu 8,
+  aus den letzten 4 Stunden)
+- **Courtbelegung je Spiel:** vom Aufruf bis der Court frei ist, Einzel und Doppel getrennt
+  (ersatzweise Spieldauer + 8 min; anfangs 30 bzw. 35 min)
+- **Beginn:** die nächsten Spiele in der Reihenfolge der Ansetzung auf die frei werdenden
+  Courts verteilt; Spieler, die noch spielen, frühestens 5 min nach ihrem Spielende; nie früher
+  als angesetzt (außer schon in Vorbereitung); nur Spiele des aktuellen Tages
+
+Auf der Seite steht ausdrücklich, dass es **unverbindliche Schätzungen** sind und allein der
+Aufruf der Turnierleitung zählt. Die Ansetzung eines Spiels kennt der Ticker erst, wenn er es
+unter „Als Nächstes“ gesehen hat – nach dem Einspielen dauert es daher ein paar Aufrufe, bis
+der Verzug erscheint.
+
 ### Spielfeld-Ansicht
 
 Wie die Eingabeansicht in bup: das Feld von oben, die Spieler in ihren Aufschlagfeldern, ein
@@ -315,6 +354,8 @@ Hallenseite nicht – die Ansicht folgt deshalb dieser Regel.
 
 - `tset` – alle Courts und die Spiele darauf, Turniername, turnier.de-Link, Turnierlogo
 - `tupdate_match` – neuer Spielstand eines Spiels (bei jedem Punkt)
+- mit Erweiterung v2 zusätzlich: Aufschlag und Positionen, Doppel, Vereine, Spieldauer und
+  in `tset` die nächsten Spiele mit Ansetzung (Details in [docs/BTS-UPGRADE.md](docs/BTS-UPGRADE.md))
 
 BTS schickt nur Spiele, die gerade auf einem Court liegen. Der Liveticker merkt sich deshalb
 jedes Spiel, das einmal auf einem Court war, und baut daraus die Ergebnisliste (max. 400 Spiele).
