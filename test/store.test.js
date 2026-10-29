@@ -308,4 +308,6 @@ test('Positionen im Doppel fortschreiben, wenn BTS sie nicht mitschickt', () => 
   assert.strictEqual(store.view(s).matches[0].posFrom, 'missing');   // BTS hat keine Positionen gespeichert
   store.applyMatchUpdate(s, { _id: 'm', s: [[21, 1], [1, 0]], ts: true, pe: [null, null] }, '2026-10-29T10:04:00.000Z');
   assert.strictEqual(store.view(s).matches[0].posFrom, 'empty');     // bup kennt sie nicht (nicht ausgewählt)
+  store.applyMatchUpdate(s, { _id: 'm', s: [[21, 1], [2, 0]], ts: true, pe: [[true, true], [false, true]] }, '2026-10-29T10:05:00.000Z');
+  assert.strictEqual(store.view(s).matches[0].posFrom, 'invalid');   // fremdes Format (Simulation)
 });

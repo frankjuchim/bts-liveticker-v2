@@ -324,6 +324,7 @@
       else if (!dbl || m.posFrom === 'bts') t = '✓';
       else if (m.posFrom === 'derived') t = '✓ (Positionen vom Ticker fortgeschrieben)';
       else if (m.posFrom === 'empty') t = 'Positionen leer – in bup Aufschläger/Rückschläger nicht ausgewählt';
+      else if (m.posFrom === 'invalid') t = 'Positionen in unbekanntem Format (nicht von bup, z. B. Simulation)';
       else t = 'BTS schickt keine Positionen';
       if (m.posFrom !== 'bts' && m.posRaw) t += ' [BTS: ' + m.posRaw + ']';
       srvInfo.push('Court ' + m.court + ': ' + t);
