@@ -319,13 +319,17 @@
     all.forEach(function (m) {
       if (m.status !== 'live' || !m.court) return;
       var dbl = m.home.length > 1 || m.away.length > 1;
-      var t = !m.service ? 'kein Aufschlag' : (dbl && !m.service.positions ? 'nur Team, keine Positionen' : '✓');
+      var t;
+      if (!m.service) t = 'kein Aufschlag von BTS';
+      else if (!dbl || m.posFrom === 'bts') t = '✓';
+      else if (m.posFrom === 'derived') t = '✓ (Positionen vom Ticker fortgeschrieben)';
+      else if (m.posFrom === 'empty') t = 'Positionen leer – in bup Aufschläger/Rückschläger nicht ausgewählt';
+      else t = 'BTS schickt keine Positionen';
       srvInfo.push('Court ' + m.court + ': ' + t);
     });
     var ss = document.getElementById('srvState');
     ss.textContent = srvInfo.length ? srvInfo.join(' · ') : 'kein laufendes Spiel';
-    ss.title = 'Fehlen die Positionen im Doppel, zeigt die Spielfeld-Ansicht nur das Aufschlagfeld. ' +
-      'BTS hat sie dann für dieses Spiel nicht (z. B. Zählung nicht über bup oder alte bup-Version).';
+    ss.title = 'Fehlen die Positionen im Doppel, zeigt die Spielfeld-Ansicht nur Aufschlagfeld und aufschlagendes Team.';
     document.getElementById('courtCount').textContent = courts.length + ' (' + courts.filter(function (c) { return c.match; }).length + ' belegt)';
     document.getElementById('matchCount').textContent = all.length + ' gespeichert, davon ' +
       all.filter(function (m) { return m.status === 'finished'; }).length + ' beendet';

@@ -41,8 +41,8 @@
     if (court === 'R') y = left ? H * 0.75 : H * 0.25;
     else if (court === 'L') y = left ? H * 0.25 : H * 0.75;
     else if (count > 1) {
-      // Position unbekannt: nebeneinander hinten, damit der Pfeil nicht auf einen Namen zeigt
-      return { x: left ? 140 : W - 140, y: index === 0 ? H / 2 - 42 : H / 2 + 42 };
+      // Position unbekannt: übereinander in der Mitte der Hälfte (auf der Mittellinie)
+      return { x: x, y: index === 0 ? H / 2 - 42 : H / 2 + 42 };
     } else y = H / 2;
     return { x: x, y: y };
   }

@@ -286,3 +286,26 @@ test('Aufschlagfeld auch ohne Positionen im Doppel', () => {
   assert.strictEqual(sv.positions, null);
   assert.strictEqual(sv.serveCourt, 'L');   // 21 Punkte: ungerade → linkes Feld
 });
+
+test('Positionen im Doppel fortschreiben, wenn BTS sie nicht mitschickt', () => {
+  const s = store.emptyStore();
+  store.applyTset(s, {
+    courts: [{ _id: 'c1', num: 1, match_id: 'm' }],
+    matches: [{ _id: 'm', n: 'HD', p0: ['A', 'B'], p1: ['C', 'D'], s: [[0, 0]], sf: SF_3x21, d: true, ts: true, pe: [true, true] }],
+  }, '2026-10-29T10:00:00.000Z');
+  const sv = () => store.view(s).matches[0].service;
+  assert.deepStrictEqual(sr(sv()), { server: { side: 'home', player: 0 }, receiver: { side: 'away', player: 0 } });
+  // Heim punktet bei eigenem Aufschlag: A wechselt nach links und schlägt wieder auf (1 = ungerade)
+  store.applyMatchUpdate(s, { _id: 'm', s: [[1, 0]], ts: true, pe: null }, '2026-10-29T10:01:00.000Z');
+  assert.deepStrictEqual(sr(sv()), { server: { side: 'home', player: 0 }, receiver: { side: 'away', player: 1 } });
+  assert.strictEqual(store.view(s).matches[0].posFrom, 'derived');
+  // Gast gewinnt den Ballwechsel: Aufschlagwechsel, niemand wechselt das Feld; Gast hat 1 → linkes Feld
+  store.applyMatchUpdate(s, { _id: 'm', s: [[1, 1]], ts: false, pe: null }, '2026-10-29T10:02:00.000Z');
+  assert.deepStrictEqual(sr(sv()), { server: { side: 'away', player: 1 }, receiver: { side: 'home', player: 0 } });
+  // neuer Satz: Positionen wieder unbekannt
+  store.applyMatchUpdate(s, { _id: 'm', s: [[21, 1], [0, 0]], ts: true, pe: null }, '2026-10-29T10:03:00.000Z');
+  assert.strictEqual(sv().server.player, null);
+  assert.strictEqual(store.view(s).matches[0].posFrom, 'missing');   // BTS hat keine Positionen gespeichert
+  store.applyMatchUpdate(s, { _id: 'm', s: [[21, 1], [1, 0]], ts: true, pe: [null, null] }, '2026-10-29T10:04:00.000Z');
+  assert.strictEqual(store.view(s).matches[0].posFrom, 'empty');     // bup kennt sie nicht (nicht ausgewählt)
+});
