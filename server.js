@@ -15,7 +15,7 @@ const authLib = require('./lib/auth');
 const updaterLib = require('./lib/updater');
 
 const PORT = parseInt(process.env.PORT || '80', 10);
-const TICKER_PASSWORD = process.env.TICKER_PASSWORD || '';
+const ENV_TICKER_PASSWORD = process.env.TICKER_PASSWORD || '';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const STATE_FILE = path.join(DATA_DIR, 'bts-liveticker.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
@@ -38,8 +38,17 @@ const PATCH_DIR = path.join(__dirname, 'bts-patch');
 const MAX_MESSAGE = 8 * 1024 * 1024;   // tset enthält das Turnierlogo als Base64
 const FLUSH_MS = 250;                  // Spielstände gebündelt verschicken
 
-if (!TICKER_PASSWORD) {
-  console.warn('WARNUNG: TICKER_PASSWORD ist nicht gesetzt – BTS-Verbindungen werden abgelehnt.');
+// Ticker-Passwort für BTS: im Admin-Panel geändert (ticker-password.json) oder TICKER_PASSWORD
+const TICKER_PW_FILE = path.join(DATA_DIR, 'ticker-password.json');
+let tickerPasswordSet = '';
+try {
+  const t = JSON.parse(fs.readFileSync(TICKER_PW_FILE, 'utf8'));
+  if (t && typeof t.password === 'string') tickerPasswordSet = t.password;
+} catch (e) { /* nicht im Admin-Panel geändert */ }
+const tickerPassword = () => tickerPasswordSet || ENV_TICKER_PASSWORD;
+
+if (!tickerPassword()) {
+  console.warn('WARNUNG: Kein Ticker-Passwort gesetzt (TICKER_PASSWORD oder Admin-Panel) – BTS-Verbindungen werden abgelehnt.');
 }
 
 let data = store.emptyStore();
@@ -155,9 +164,10 @@ function handleEvents(req, res) {
 // ---------------------------------------------------------------- BTS-WebSocket
 
 function passwordOk(given) {
-  if (!TICKER_PASSWORD || typeof given !== 'string') return false;
+  const pw = tickerPassword();
+  if (!pw || typeof given !== 'string') return false;
   const a = crypto.createHash('sha256').update(given).digest();
-  const b = crypto.createHash('sha256').update(TICKER_PASSWORD).digest();
+  const b = crypto.createHash('sha256').update(pw).digest();
   return crypto.timingSafeEqual(a, b);
 }
 
@@ -528,6 +538,41 @@ function handleUpdateStart(req, res) {
   });
 }
 
+// Ticker-Passwort für BTS ändern ({ password }); leer = zurück zu TICKER_PASSWORD aus der Konfiguration.
+// Nur Zeichen, die BTS ohne Umkodierung in die Adresse (?password=…) schreiben kann.
+// Eine bestehende BTS-Verbindung bleibt bestehen, das neue Passwort gilt ab der nächsten.
+function handleTickerPassword(req, res) {
+  if (!requireAdmin(req, res)) return;
+  readBody(req, (body) => {
+    let input = {};
+    try { input = JSON.parse(body) || {}; } catch (e) { /* leer */ }
+    const pw = typeof input.password === 'string' ? input.password.trim() : '';
+    if (pw && !/^[A-Za-z0-9._~-]{6,100}$/.test(pw)) {
+      return send(res, 400, JSON.stringify({
+        error: 'Bitte 6 bis 100 Zeichen, nur Buchstaben (ohne Umlaute), Ziffern und - _ . ~',
+      }));
+    }
+    if (!pw && !ENV_TICKER_PASSWORD) {
+      return send(res, 400, JSON.stringify({ error: 'Ohne TICKER_PASSWORD in der Konfiguration muss hier ein Passwort gesetzt sein.' }));
+    }
+    try {
+      if (pw) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+        const tmp = TICKER_PW_FILE + '.tmp';
+        fs.writeFileSync(tmp, JSON.stringify({ password: pw, changedAt: new Date().toISOString() }), { mode: 0o600 });
+        fs.renameSync(tmp, TICKER_PW_FILE);
+      } else {
+        fs.rmSync(TICKER_PW_FILE, { force: true });
+      }
+    } catch (e) {
+      return send(res, 500, JSON.stringify({ error: 'Speichern fehlgeschlagen: ' + e.message }));
+    }
+    tickerPasswordSet = pw;
+    console.log(pw ? 'Ticker-Passwort im Admin-Panel geändert' : 'Ticker-Passwort auf TICKER_PASSWORD zurückgesetzt');
+    send(res, 200, JSON.stringify({ ok: true, tickerPassword: tickerPassword(), tickerPasswordSource: pw ? 'admin' : 'env' }));
+  });
+}
+
 const server = http.createServer((req, res) => {
   const { pathname } = new URL(req.url, 'http://x');
   if (req.method === 'POST' && pathname === '/api/reset') return handleReset(req, res);
@@ -537,13 +582,15 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && pathname === '/api/login') return handleLogin(req, res);
   if (req.method === 'POST' && pathname === '/api/logout') return handleLogout(req, res);
   if (req.method === 'POST' && pathname === '/api/admin-password') return handleAdminPassword(req, res);
+  if (req.method === 'POST' && pathname === '/api/ticker-password') return handleTickerPassword(req, res);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, '{"error":"method"}');
   if (pathname === '/api/state') return send(res, 200, stateJson);
   if (pathname === '/api/brand') return send(res, 200, JSON.stringify(brandInfo()));
   if (pathname === '/api/admin') {
     if (!requireAdmin(req, res)) return;
     return send(res, 200, JSON.stringify({
-      defaultPassword: auth.isDefault(), passwordFromEnv: auth.fromEnv(), tickerPassword: TICKER_PASSWORD,
+      defaultPassword: auth.isDefault(), passwordFromEnv: auth.fromEnv(), tickerPassword: tickerPassword(),
+      tickerPasswordSource: tickerPasswordSet ? 'admin' : (ENV_TICKER_PASSWORD ? 'env' : 'none'),
     }), null, {
       'Cache-Control': 'no-store',
     });

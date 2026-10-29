@@ -50,6 +50,10 @@
   .ext-table td { white-space: nowrap; }
   .ext-table td:last-child { font-weight: 600; }
   @media (max-width: 560px) { .ext-table td { white-space: normal; } }
+  .tpw-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .tpw-form input { flex: 1; min-width: 12em; font: inherit; font-family: ui-monospace, monospace; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); }
+  .tpw-form button { font: inherit; padding: 8px 14px; border: 0; border-radius: 8px; background: var(--club); color: #fff; cursor: pointer; }
+  .tpw-form button.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
   .actions-row button { font: inherit; padding: 8px 14px; border: 0; border-radius: 8px; background: var(--club); color: #fff; cursor: pointer; }
   .actions-row button.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
   .actions-row button:disabled { opacity: 0.5; cursor: default; }
@@ -115,7 +119,7 @@
     <p style="margin-top:0"><b>1. Verbindung</b> – in der BTS-Oberfläche: Turnier bearbeiten → <b>Ticker</b> aktivieren →
       Ticker-Adresse <code class="wsUrl"></code> und Ticker-Passwort
       <code class="secret" id="tickerPw" title="Klicken zum Anzeigen">•••••••• (anzeigen)</code> eintragen
-      (Einstellung <code>TICKER_PASSWORD</code> der Konfiguration).</p>
+      (änderbar unter <a href="#tpwSection">„Ticker-Passwort für BTS“</a>).</p>
     <p style="margin-bottom:0"><b>2. Optional: BTS-Erweiterung (v2)</b> – der Liveticker funktioniert auch ohne sie.
       Die Erweiterung lässt BTS ein paar zusätzliche Daten an den Ticker schicken:</p>
     <table class="ext-table">
@@ -139,6 +143,23 @@
       dort im BTS-Verzeichnis ausführen und BTS danach neu starten (derselbe Befehl aktualisiert auch eine ältere Version):</p>
     <pre class="cmd">curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/bts-patch/apply.sh | bash</pre>
     <p style="margin-bottom:0"><a href="https://github.com/frankjuchim/bts-liveticker-v2/blob/main/docs/BTS-UPGRADE.md" target="_blank" rel="noopener">Ausführliche Anleitung</a></p>
+  </section>
+
+  <h2 id="tpwSection">Ticker-Passwort für BTS</h2>
+  <section class="panel">
+    <p class="muted" style="margin-top:0">Mit diesem Passwort verbindet sich BTS mit dem Liveticker (in BTS: Turnier bearbeiten →
+      Ticker → Ticker-Passwort). <span id="tpwSource"></span></p>
+    <form id="tpwForm" class="tpw-form">
+      <input type="text" id="tpwInput" autocomplete="off" spellcheck="false" maxlength="100"
+        pattern="[A-Za-z0-9._~\-]{6,100}" placeholder="neues Passwort" required>
+      <button type="button" id="tpwGen" class="secondary">Zufällig erzeugen</button>
+      <button type="submit">Speichern</button>
+      <button type="button" id="tpwReset" class="secondary" hidden>Auf Konfiguration zurücksetzen</button>
+    </form>
+    <p class="muted" style="font-size:0.85rem;margin-bottom:0">6 bis 100 Zeichen: Buchstaben ohne Umlaute, Ziffern und <code>- _ . ~</code>.
+      Eine <b>bestehende Verbindung bleibt bestehen</b>; das neue Passwort gilt, sobald BTS sich neu verbindet –
+      also danach gleich in BTS eintragen.</p>
+    <div id="tpwMsg" style="margin-top:8px"></div>
   </section>
 
   <h2>Seiten &amp; Overlays</h2>
@@ -594,8 +615,44 @@
       document.getElementById('defaultPwAlert').hidden = !d.defaultPassword;
       document.getElementById('pwEnv').hidden = !d.passwordFromEnv;
       document.getElementById('pwForm').hidden = !!d.passwordFromEnv;
+      showTickerPw(d);
     });
   }
+
+  // ---- Ticker-Passwort für BTS
+  function showTickerPw(d) {
+    var src = document.getElementById('tpwSource');
+    src.textContent = d.tickerPasswordSource === 'admin' ? 'Zurzeit gilt das hier im Admin-Panel gesetzte Passwort.'
+      : d.tickerPasswordSource === 'env' ? 'Zurzeit gilt TICKER_PASSWORD aus der Konfiguration.'
+      : 'Noch kein Passwort gesetzt – BTS kann sich nicht verbinden.';
+    document.getElementById('tpwReset').hidden = d.tickerPasswordSource !== 'admin';
+    var shown = document.getElementById('tickerPw');
+    if (!shown.classList.contains('secret')) shown.textContent = d.tickerPassword || '(nicht gesetzt)';
+  }
+  function saveTickerPw(pw) {
+    var msg = document.getElementById('tpwMsg');
+    post('/api/ticker-password', { password: pw }).then(function (x) {
+      if (!x.ok) { msg.textContent = x.d.error || 'Fehler'; msg.className = 'bad'; return; }
+      adminInfo.tickerPassword = x.d.tickerPassword;
+      adminInfo.tickerPasswordSource = x.d.tickerPasswordSource;
+      showTickerPw(adminInfo);
+      document.getElementById('tpwInput').value = '';
+      msg.textContent = 'Gespeichert. Jetzt in BTS als Ticker-Passwort eintragen: ' + x.d.tickerPassword;
+      msg.className = 'ok';
+    }).catch(function () { msg.textContent = 'Fehler beim Senden.'; msg.className = 'bad'; });
+  }
+  document.getElementById('tpwForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    saveTickerPw(document.getElementById('tpwInput').value.trim());
+  });
+  document.getElementById('tpwGen').addEventListener('click', function () {
+    var a = new Uint8Array(12);
+    crypto.getRandomValues(a);
+    document.getElementById('tpwInput').value = Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+  });
+  document.getElementById('tpwReset').addEventListener('click', function () {
+    if (confirm('Wieder TICKER_PASSWORD aus der Konfiguration verwenden?')) saveTickerPw('');
+  });
   loadAdmin();
 
   document.getElementById('logout').addEventListener('click', function () {

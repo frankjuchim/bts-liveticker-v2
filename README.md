@@ -165,7 +165,8 @@ auf `dbv.turnier.de`, einfach die Adresse der Turnierseite ins Feld kopieren
 (z. B. `https://dbv.turnier.de/tournament/<GUID>/matches`) oder den Link ausblenden.
 
 **Ticker-Passwort nachsehen** (ohne Admin-Panel), auf dem Proxmox-Host:
-`pct exec <CTID> -- grep TICKER_PASSWORD /etc/bts-liveticker.env`
+`pct exec <CTID> -- grep TICKER_PASSWORD /etc/bts-liveticker.env` – gilt, solange es nicht im Admin-Panel
+geändert wurde (dann steht es in `/var/lib/bts-liveticker/ticker-password.json`).
 
 ## Konfiguration
 
@@ -175,7 +176,7 @@ haben Vorrang:
 
 | Variable | Standard | |
 | --- | --- | --- |
-| `TICKER_PASSWORD` | zufällig erzeugt | Passwort, das in BTS eingetragen wird |
+| `TICKER_PASSWORD` | zufällig erzeugt | Passwort, das in BTS eingetragen wird (im Admin-Panel änderbar; dort gesetzt, geht es vor) |
 | `PORT` | `80` | HTTP-Port |
 | `TITLE` | `Badminton` | Überschrift im Kopf, z. B. Vereinsname |
 | `SUBTITLE` | `Turnier-Liveticker` | Zeile darunter |
@@ -195,7 +196,8 @@ In BTS: Turnier bearbeiten → **Ticker** aktivieren →
 
 - **Ticker-Adresse:** `ws://<IP-des-Containers>/ws/update`
   (mit HTTPS über einen Reverse-Proxy: `wss://<domain>/ws/update`)
-- **Ticker-Passwort:** `TICKER_PASSWORD` aus der Konfiguration
+- **Ticker-Passwort:** steht im Admin-Panel und lässt sich dort ändern (Abschnitt „Ticker-Passwort für BTS“);
+  Standard ist `TICKER_PASSWORD` aus der Konfiguration
 
 Auf `http://<IP>/admin` steht danach „verbunden“. Dort gibt es auch alle Overlay-Links.
 

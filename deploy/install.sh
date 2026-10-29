@@ -59,7 +59,7 @@ if [ ! -f "$ENV_FILE" ]; then
 PORT=80
 DATA_DIR=$DATA_DIR
 
-# Passwort, das in BTS beim Ticker eingetragen wird
+# Passwort, das in BTS beim Ticker eingetragen wird (im Admin-Panel änderbar – das geht dann vor)
 TICKER_PASSWORD=$PASSWORD
 
 # Erscheinungsbild
@@ -101,6 +101,11 @@ else
   exit 1
 fi
 
+TPW=$(sed -n 's/^TICKER_PASSWORD=//p' "$ENV_FILE")
+# im Admin-Panel geändert? Dann gilt das
+if [ -f "$DATA_DIR/ticker-password.json" ]; then
+  TPW=$(sed -n 's/.*"password":"\([^"]*\)".*/\1/p' "$DATA_DIR/ticker-password.json")
+fi
 IP=$(hostname -I | awk '{print $1}')
 SUFFIX=""; [ "$PORT" = 80 ] || SUFFIX=":$PORT"
 cat <<INFO
@@ -109,7 +114,7 @@ cat <<INFO
   Admin-Panel:       http://$IP$SUFFIX/admin
                      Passwort btsliveadmin (falls noch nicht geändert – bitte im Admin-Panel ändern)
   In BTS eintragen:  Ticker-Adresse  ws://$IP$SUFFIX/ws/update
-                     Ticker-Passwort $(sed -n 's/^TICKER_PASSWORD=//p' "$ENV_FILE")
+                     Ticker-Passwort $TPW
   Konfiguration:     $ENV_FILE
   Update:            bash $APP_DIR/deploy/update.sh
 
