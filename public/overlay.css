@@ -105,11 +105,14 @@ html, body {
 .set { width: 2.2em; color: var(--muted); font-size: 0.85em; }
 .set.won { color: var(--text); font-weight: 700; }
 .points { width: 2.3em; background: #fff; color: var(--club); font-weight: 800; font-size: 1.15em; }
+/* Ball am Punktestand: dieses Team schlägt auf (Aufschläger selbst nicht bekannt) */
+.serve-team .points { position: relative; }
+.serve-team .points::before { content: ""; position: absolute; left: 0.25em; top: 50%; width: 0.38em; height: 0.38em; margin-top: -0.19em;
+  border-radius: 50%; background: #ffd84d; box-shadow: 0 0 0 0.06em rgba(0,0,0,0.35); }
 
 /* Aufschläger (Punkt) und Rückschläger im Doppel (unterstrichen) */
 .name.srv::before { content: ""; display: inline-block; width: 0.4em; height: 0.4em; margin: 0 0.35em 0.1em 0; border-radius: 50%; background: #fff; vertical-align: middle; }
 .name.rcv { text-decoration: underline; text-decoration-thickness: 0.08em; text-underline-offset: 0.18em; }
-.name.srv-team::before { content: ""; display: inline-block; width: 0.45em; height: 0.45em; margin: 0 0.4em 0.1em 0; border-radius: 50%; border: 0.1em solid #fff; box-sizing: border-box; vertical-align: middle; }
 
 /* ---- Ergebnis-Einblendung (/ergebnis) ---- */
 .result-overlay #stage {

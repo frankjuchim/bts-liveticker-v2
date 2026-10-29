@@ -120,8 +120,7 @@
   }
 
   // Namen einer Seite als <span>s: Aufschläger mit Punkt (.srv), im Doppel
-  // Rückschläger unterstrichen (.rcv); ist nur das aufschlagende Team bekannt,
-  // bekommen beide Namen einen Ring (.srv-team). Leere Plätze bleiben ausgelassen.
+  // Rückschläger unterstrichen (.rcv). Leere Plätze bleiben ausgelassen.
   function playerSpans(m, side, short) {
     var sv = m.service;
     var list = [];
@@ -131,16 +130,19 @@
       if (sv && sv.server.side === side && sv.server.player === i) {
         span.classList.add('srv');
       }
-      // Aufschläger nicht bekannt (BTS schickt keine Positionen): aufschlagendes Team markieren
-      if (sv && sv.server.side === side && sv.server.player == null && m[side].length > 1) {
-        span.classList.add('srv-team');
-      }
       if (sv && sv.receiver.side === side && m[side].length > 1 && sv.receiver.player === i) {
         span.classList.add('rcv');
       }
       list.push(span);
     });
     return list;
+  }
+
+  // Nur das aufschlagende Team ist bekannt (Doppel ohne Positionen von BTS)?
+  // Dann zeigen Karten und Overlays einen Ball am Punktestand dieses Teams.
+  function servingTeamOnly(m, side) {
+    var sv = m.service;
+    return Boolean(sv && sv.server.side === side && sv.server.player == null && (m[side] || []).length > 1);
   }
 
   function time(iso) {
@@ -171,6 +173,7 @@
     shortName: shortName,
     players: players,
     playerSpans: playerSpans,
+    servingTeamOnly: servingTeamOnly,
     time: time,
     applyCommonParams: applyCommonParams,
     onBrand: function (fn) { brandListeners.push(fn); },

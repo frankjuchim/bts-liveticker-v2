@@ -96,6 +96,10 @@ h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; colo
 .now-row .set { color: rgba(255,255,255,0.7); }
 .now-row .set.won { color: #fff; font-weight: 700; }
 .now-row .pts { width: 48px; background: #fff; color: var(--club); font-weight: 800; font-size: 1.3rem; }
+/* Ball am Punktestand: dieses Team schlägt auf (Aufschläger selbst nicht bekannt) */
+.now-row.serve-team .pts { position: relative; }
+.now-row.serve-team .pts::before { content: ""; position: absolute; left: 5px; top: 50%; width: 9px; height: 9px; margin-top: -4.5px;
+  border-radius: 50%; background: #ffd84d; box-shadow: 0 0 0 1.5px rgba(0,0,0,0.35); }
 
 .badge { font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; color: #fff; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
 .badge.live { background: var(--live); }
@@ -135,7 +139,6 @@ h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; colo
 /* Aufschläger (Punkt) und Rückschläger im Doppel (unterstrichen) */
 .name.srv::before { content: ""; display: inline-block; width: 0.45em; height: 0.45em; margin: 0 0.4em 0.1em 0; border-radius: 50%; background: currentColor; vertical-align: middle; }
 .name.rcv { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
-.name.srv-team::before { content: ""; display: inline-block; width: 0.45em; height: 0.45em; margin: 0 0.4em 0.1em 0; border-radius: 50%; border: 0.1em solid currentColor; box-sizing: border-box; vertical-align: middle; }
 
 /* ---- Spielfeld-Ansicht (field.js) ---- */
 .fields-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 12px; }
@@ -216,8 +219,8 @@ h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; colo
 .pname:hover { text-decoration: underline dotted; text-underline-offset: 3px; }
 .pname.fav::before { content: "★ "; color: #f5b800; }
 /* Aufschläger und gefolgt: Punkt vorne, Stern hinten */
-.pname.fav.srv::before, .pname.fav.srv-team::before { content: ""; color: inherit; }
-.pname.fav.srv::after, .pname.fav.srv-team::after { content: " ★"; color: #f5b800; }
+.pname.fav.srv::before { content: ""; color: inherit; }
+.pname.fav.srv::after { content: " ★"; color: #f5b800; }
 .now-card.followed, .game.followed, .up.followed, .field-card.followed { box-shadow: 0 0 0 3px #f5b800; }
 .now-card .club { font-size: 0.72rem; color: rgba(255,255,255,0.72); text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .g-club { font-size: 0.78rem; color: var(--muted); font-weight: 400; }

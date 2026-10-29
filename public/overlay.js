@@ -35,6 +35,7 @@
     ['home', 'away'].forEach(function (side) {
       var row = el('div', 'row ' + side);
       if (m.winner === side) row.classList.add('winner');
+      if (BL.servingTeamOnly(m, side)) row.classList.add('serve-team');
 
       var team = el('div', 'team');
       var line = el('span', 'names');

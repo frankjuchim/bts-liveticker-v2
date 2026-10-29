@@ -143,7 +143,7 @@
 
     var split = BL.splitSets(m);
     ['home', 'away'].forEach(function (side) {
-      var row = el('div', 'now-row ' + side + (m.winner === side ? ' winner' : ''));
+      var row = el('div', 'now-row ' + side + (m.winner === side ? ' winner' : '') + (BL.servingTeamOnly(m, side) ? ' serve-team' : ''));
       var who = el('div', 'who');
       var names = BL.playerSpans(m, side);
       if (!names.length) who.appendChild(el('span', 'names muted', 'N. N.'));
