@@ -45,7 +45,10 @@
 
   function compute(state, now) {
     now = now || Date.now();
-    var res = { delay: null, delaySamples: 0, slot: { s: DEFAULT_SLOT.s, d: DEFAULT_SLOT.d }, slotSamples: { s: 0, d: 0 }, courts: 0, eta: {} };
+    // Testmodus (Admin-Panel): Datum der Ansetzungen ignorieren, nur die Uhrzeit zählt
+    var noDate = !!(state && state.testMode);
+    var at = function (p, ref) { return plannedMs(p && noDate ? { time: p.time } : p, ref); };
+    var res = { testMode: noDate, delay: null, delaySamples: 0, slot: { s: DEFAULT_SLOT.s, d: DEFAULT_SLOT.d }, slotSamples: { s: 0, d: 0 }, courts: 0, eta: {} };
     if (!state || !Array.isArray(state.upcoming)) return res;
     var matches = state.matches || [];
     var byId = {};
@@ -58,7 +61,7 @@
       .slice(0, 8)
       .map(function (m) {
         var c = Date.parse(m.calledAt);
-        var p = plannedMs(m.planned, c);
+        var p = at(m.planned, c);
         return p == null ? null : c - p;
       })
       .filter(function (d) { return d != null && Math.abs(d) < 12 * 60 * MIN; });
@@ -110,8 +113,8 @@
 
     // ---- Die nächsten Spiele der Reihe nach verteilen
     state.upcoming.slice(0, 60).forEach(function (u) {
-      var p = plannedMs({ time: u.time, date: u.date }, now);
-      if (u.date && p != null && !sameDay(p, now)) return;   // andere Turniertage nicht schätzen
+      var p = at({ time: u.time, date: u.date }, now);
+      if (!noDate && u.date && p != null && !sameDay(p, now)) return;   // andere Turniertage nicht schätzen
       // frühestens: Spieler frei und – außer schon in Vorbereitung – nicht vor der Ansetzung
       var players = (u.home || []).concat(u.away || []).filter(Boolean);
       var ready = now;
@@ -165,6 +168,7 @@
     };
     parts.push('Courtbelegung je Spiel: ' + sl('s', 'Einzel') + ', ' + sl('d', 'Doppel'));
     parts.push(r.courts + ' Courts, Reihenfolge der Ansetzung, Pausen der Spieler zwischen zwei Spielen');
+    if (r.testMode) parts.push('Testmodus: Datum der Ansetzungen wird ignoriert');
     return parts.join(' · ');
   }
 

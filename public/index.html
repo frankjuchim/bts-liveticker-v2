@@ -397,7 +397,7 @@
     var up = (state && state.upcoming) || null;
     var bar = document.getElementById('schedBar');
     bar.hidden = !(sched && sched.delay != null);
-    if (!bar.hidden) bar.textContent = 'Zeitplan: ' + Schedule.delayText(sched.delay) + ' (geschätzt)';
+    if (!bar.hidden) bar.textContent = 'Zeitplan: ' + Schedule.delayText(sched.delay) + ' (geschätzt' + (sched.testMode ? ', Testmodus' : '') + ')';
     document.getElementById('schedNote').hidden = !(sched && Object.keys(sched.eta).length);
     if (sched) document.getElementById('schedBasis').textContent = 'Grundlage: ' + Schedule.basisText(sched) +
       '. Aufrufe außer der Reihe, Verletzungspausen, lange Spiele oder Pausen im Zeitplan sind nicht vorhersehbar.';

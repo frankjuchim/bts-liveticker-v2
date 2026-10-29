@@ -47,6 +47,12 @@ try {
 } catch (e) { /* nicht im Admin-Panel geändert */ }
 const tickerPassword = () => tickerPasswordSet || ENV_TICKER_PASSWORD;
 
+// Testmodus (Admin-Panel): Zeitplan-Schätzung ohne Datum (für Simulationen vor dem
+// Turniertag) und Diagnose der Aufschlagdaten
+const TEST_FILE = path.join(DATA_DIR, 'testmode.json');
+let testMode = false;
+try { testMode = JSON.parse(fs.readFileSync(TEST_FILE, 'utf8')).on === true; } catch (e) { /* aus */ }
+
 if (!tickerPassword()) {
   console.warn('WARNUNG: Kein Ticker-Passwort gesetzt (TICKER_PASSWORD oder Admin-Panel) – BTS-Verbindungen werden abgelehnt.');
 }
@@ -68,7 +74,7 @@ function btsInfo() {
 }
 
 function rebuild() {
-  const v = store.view(data, { bts: btsInfo() });
+  const v = store.view(data, { bts: btsInfo(), testMode });
   // Link aus dem Admin-Panel geht vor den Link von BTS
   if (settings.hideLink) v.tournament.url = '';
   else if (settings.link) v.tournament.url = settings.link;
@@ -573,6 +579,24 @@ function handleTickerPassword(req, res) {
   });
 }
 
+function handleTestMode(req, res) {
+  if (!requireAdmin(req, res)) return;
+  readBody(req, (body) => {
+    let input = {};
+    try { input = JSON.parse(body) || {}; } catch (e) { /* leer */ }
+    try {
+      if (input.on === true) fs.writeFileSync(TEST_FILE, JSON.stringify({ on: true, since: new Date().toISOString() }));
+      else fs.rmSync(TEST_FILE, { force: true });
+    } catch (e) {
+      return send(res, 500, JSON.stringify({ error: 'Speichern fehlgeschlagen: ' + e.message }));
+    }
+    testMode = input.on === true;
+    console.log('Testmodus', testMode ? 'an' : 'aus');
+    changedFull();
+    send(res, 200, JSON.stringify({ ok: true, on: testMode }));
+  });
+}
+
 const server = http.createServer((req, res) => {
   const { pathname } = new URL(req.url, 'http://x');
   if (req.method === 'POST' && pathname === '/api/reset') return handleReset(req, res);
@@ -583,6 +607,7 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && pathname === '/api/logout') return handleLogout(req, res);
   if (req.method === 'POST' && pathname === '/api/admin-password') return handleAdminPassword(req, res);
   if (req.method === 'POST' && pathname === '/api/ticker-password') return handleTickerPassword(req, res);
+  if (req.method === 'POST' && pathname === '/api/testmode') return handleTestMode(req, res);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, '{"error":"method"}');
   if (pathname === '/api/state') return send(res, 200, stateJson);
   if (pathname === '/api/brand') return send(res, 200, JSON.stringify(brandInfo()));

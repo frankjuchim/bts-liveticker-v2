@@ -110,7 +110,7 @@
       <dt>Courts</dt><dd id="courtCount">–</dd>
       <dt>Spiele</dt><dd id="matchCount">–</dd>
       <dt>BTS-Erweiterung</dt><dd id="extState">–</dd>
-      <dt>Aufschlagdaten</dt><dd id="srvState" class="muted">–</dd>
+      <dt class="diag" hidden>Aufschlagdaten</dt><dd id="srvState" class="muted diag" hidden>–</dd>
       <dt>Adresse für BTS</dt><dd><code id="wsUrl"></code></dd>
     </dl>
   </section>
@@ -236,6 +236,16 @@
     <div id="resetMsg"></div>
   </section>
 
+  <h2 id="testSection">Testmodus</h2>
+  <section class="panel">
+    <label class="toggle" style="color:var(--text)"><input type="checkbox" id="testMode"> Testmodus einschalten</label>
+    <p class="muted" style="margin-bottom:0;font-size:0.9rem">Für Proben und Simulationen vor dem Turnier – im Turnierbetrieb ausschalten.
+      Im Testmodus ignoriert die Zeitplan-Schätzung das Datum der Ansetzungen (nur die Uhrzeit zählt), damit Verzug und
+      voraussichtliche Zeiten auch vor dem Turniertag erscheinen; auf der Seite steht dann „Testmodus“ dabei.
+      Außerdem zeigt der Status oben die <b>Aufschlagdaten</b> je Court (Fehlersuche für Aufschläger und Positionen).</p>
+    <div id="testMsg" style="margin-top:8px"></div>
+  </section>
+
   <h2 id="updSection">Update</h2>
   <section class="panel">
     <dl id="updVersions">
@@ -314,6 +324,9 @@
     else { ext.textContent = 'noch nicht erkennbar – sobald ein Spiel auf einem Court liegt'; ext.className = 'muted'; }
     var courts = (state && state.courts) || [];
     var all = (state && state.matches) || [];
+    var tm = !!(state && state.testMode);
+    document.getElementById('testMode').checked = tm;
+    document.querySelectorAll('.diag').forEach(function (e) { e.hidden = !tm; });
     // Je laufendem Spiel: schickt BTS Aufschlag und (im Doppel) die Positionen?
     var srvInfo = [];
     all.forEach(function (m) {
@@ -637,6 +650,18 @@
       showTickerPw(d);
     });
   }
+
+  // ---- Testmodus
+  document.getElementById('testMode').addEventListener('change', function () {
+    var box = this;
+    var msg = document.getElementById('testMsg');
+    post('/api/testmode', { on: box.checked }).then(function (x) {
+      if (!x.ok) { box.checked = !box.checked; msg.textContent = x.d.error || 'Fehler'; msg.className = 'bad'; return; }
+      msg.textContent = x.d.on ? 'Testmodus an.' : 'Testmodus aus.';
+      msg.className = 'ok';
+      document.querySelectorAll('.diag').forEach(function (e) { e.hidden = !x.d.on; });
+    }).catch(function () { box.checked = !box.checked; msg.textContent = 'Fehler beim Senden.'; msg.className = 'bad'; });
+  });
 
   // ---- Ticker-Passwort für BTS
   function showTickerPw(d) {

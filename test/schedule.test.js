@@ -55,3 +55,20 @@ test('Zeitplan: ohne Erweiterung v2 keine Schätzung', () => {
   assert.strictEqual(r.delay, null);
   assert.deepStrictEqual(r.eta, {});
 });
+
+test('Zeitplan: Testmodus ignoriert das Datum der Ansetzungen', () => {
+  const st = {
+    testMode: true,
+    courts: [{ num: '1', match: null }],
+    matches: [
+      { id: 'a', status: 'finished', planned: { time: '10:00', date: '2026-11-14' }, calledAt: iso('10:20') },
+      { id: 'b', status: 'finished', planned: { time: '10:30', date: '2026-11-14' }, calledAt: iso('10:50') },
+    ],
+    upcoming: [{ id: 'u', state: 'scheduled', home: ['A'], away: ['B'], time: '12:00', date: '2026-11-14' }],
+  };
+  const r = Schedule.compute(st, at('11:00'));
+  assert.strictEqual(r.delay, 20 * MIN);
+  assert.strictEqual(r.eta.u, at('12:00'));
+  st.testMode = false;
+  assert.strictEqual(Schedule.compute(st, at('11:00')).eta.u, undefined);
+});

@@ -343,6 +343,10 @@ Spieler. Grundlage:
   Courts verteilt; Spieler, die noch spielen, frühestens 5 min nach ihrem Spielende; nie früher
   als angesetzt (außer schon in Vorbereitung); nur Spiele des aktuellen Tages
 
+Für Proben und Simulationen vor dem Turniertag gibt es im Admin-Panel einen **Testmodus**: Die
+Schätzung ignoriert dann das Datum der Ansetzungen (nur die Uhrzeit zählt), und der Status zeigt
+die Aufschlagdaten je Court zur Fehlersuche. Im Turnierbetrieb ausschalten.
+
 Auf der Seite steht ausdrücklich, dass es **unverbindliche Schätzungen** sind und allein der
 Aufruf der Turnierleitung zählt. Die Ansetzung eines Spiels kennt der Ticker erst, wenn er es
 unter „Als Nächstes“ gesehen hat – nach dem Einspielen dauert es daher ein paar Aufrufe, bis
