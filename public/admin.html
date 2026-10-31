@@ -136,10 +136,10 @@
       Ticker-Adresse <code class="wsUrl"></code> und Ticker-Passwort
       <code class="secret" id="tickerPw" title="Klicken zum Anzeigen">•••••••• (anzeigen)</code> eintragen
       (änderbar unter <a href="#tpwSection">„Ticker-Passwort für BTS“</a>).</p>
-    <p style="margin-bottom:0" id="extSetup"><b>2. Optional: BTS-Erweiterung (v2)</b> – der Liveticker funktioniert auch ohne sie.
+    <p style="margin-bottom:0" id="extSetup"><b>2. Optional: BTS-Erweiterung (v3)</b> – der Liveticker funktioniert auch ohne sie.
       Die Erweiterung lässt BTS ein paar zusätzliche Daten an den Ticker schicken:</p>
     <table class="ext-table">
-      <thead><tr><th></th><th>ohne Erweiterung</th><th>mit Erweiterung v2</th></tr></thead>
+      <thead><tr><th></th><th>ohne Erweiterung</th><th>mit Erweiterung v3</th></tr></thead>
       <tbody>
         <tr><th>Spielstände, Ergebnisse, Overlays, Ergebnis-Einblendung</th><td>✓</td><td>✓</td></tr>
         <tr><th>Spielern folgen, Hinweise bei Aufruf und Spielende, Spielerseite</th><td>✓</td><td>✓</td></tr>
@@ -149,6 +149,7 @@
         <tr><th>Spieldauer</th><td>geschätzt (ab erstem Punkt)</td><td>genau (aus bup)</td></tr>
         <tr><th>„Als Nächstes“: Spiele in Vorbereitung und angesetzte Spiele</th><td>–</td><td>✓</td></tr>
         <tr><th>Verzug zum Zeitplan und voraussichtlicher Beginn (Schätzung)</th><td>–</td><td>✓</td></tr>
+        <tr><th>Turnierbäume und Gruppen (<code>/baum</code>)</th><td>–</td><td>✓ (ab v3)</td></tr>
       </tbody>
     </table>
     <p class="muted" style="font-size:0.88rem">Geändert wird nur die Datei <code>bts/ticker_conn.js</code> (die Ticker-Anbindung):
@@ -349,12 +350,14 @@
     if (v == null && state) v = state.upcoming ? 2 : (state.btsExtension === true ? 1 : (state.btsExtension === false ? 0 : null));
     var latest = (state && state.btsExtLatest) || 2;
     if (v == null) { ext.textContent = 'noch nicht erkennbar – sobald ein Spiel auf einem Court liegt'; ext.className = 'muted'; }
-    else if (v >= latest) { ext.textContent = 'aktuell (v' + v + '): Aufschlag, Vereine, Spieldauer, Als Nächstes'; ext.className = 'ok'; }
+    else if (v >= latest) { ext.textContent = 'aktuell (v' + v + '): Aufschlag, Vereine, Spieldauer, Als Nächstes, Turnierbäume'; ext.className = 'ok'; }
     else if (v > 0) {
-      ext.textContent = 'veraltet (v' + v + ', aktuell ist v' + latest + ') – bitte auf dem BTS-Rechner aktualisieren:';
+      ext.textContent = 'veraltet (v' + v + ', aktuell ist v' + latest + ') – alles Bisherige läuft weiter' +
+        (v < 3 ? ', nur die Turnierbäume (/baum) fehlen' : '') + (v < 2 ? ' und Vereine, Spieldauer, „Als Nächstes“' : '') +
+        '. Zum Aktualisieren:';
       ext.className = 'bad';
     } else {
-      ext.textContent = 'nicht installiert – ohne sie fehlen Aufschlag, Spielfeld-Ansicht, Vereine, Spieldauer und „Als Nächstes“:';
+      ext.textContent = 'nicht installiert – ohne sie fehlen Aufschlag, Spielfeld-Ansicht, Vereine, Spieldauer, „Als Nächstes“ und Turnierbäume:';
       ext.className = 'bad';
     }
     document.getElementById('extHelp').hidden = v == null || v >= latest;
@@ -400,6 +403,7 @@
     ul.appendChild(link('/?view=field', 'Liveticker in der Spielfeld-Ansicht'));
     ul.appendChild(link('/felder?cols=' + Math.min(3, Math.max(1, courts.length)), 'Alle Courts als Spielfeld (Spalten über ?cols=…, z. B. für einen Hallenbildschirm)'));
     ul.appendChild(link('/spieler', 'Spieler-Seite: Meine Spieler, alle Spieler, Vereine, Statistik'));
+    ul.appendChild(link('/baum', 'Turnierbäume und Gruppen (BTS-Erweiterung v3), einzelnes Feld: /baum?d=<Feld>'));
     ul.appendChild(link('/ergebnis', 'Overlay: Ergebnis-Einblendung bei Spielende (Test: /ergebnis?test=1)'));
     ul.appendChild(link('/ergebnis?mode=bar', 'Overlay: Laufband mit den letzten Ergebnissen'));
     courts.forEach(function (c) {

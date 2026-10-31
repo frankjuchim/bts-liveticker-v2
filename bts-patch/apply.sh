@@ -1,5 +1,5 @@
 #!/bin/bash
-# Spielt die Ticker-Erweiterung (Aufschläger/Rückschläger) in eine BTS-Installation ein.
+# Spielt die Ticker-Erweiterung (v3) in eine BTS-Installation ein oder ersetzt eine ältere.
 # Im BTS-Verzeichnis (dort, wo bts/ticker_conn.js liegt) als der Benutzer ausführen,
 # dem die Installation gehört:
 #
@@ -10,14 +10,15 @@
 set -euo pipefail
 
 SCRIPT_URL="${SCRIPT_URL:-https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/bts-patch/ticker-aufschlag.js}"
-MESSAGE="Ticker-Erweiterung für bts-liveticker (v2): Aufschlag, Vereine, Spieldauer, nächste Spiele"
+VERSION=3
+MESSAGE="Ticker-Erweiterung für bts-liveticker (v$VERSION): Aufschlag, Vereine, Spieldauer, nächste Spiele, Turnierbäume"
 
 [ -f bts/ticker_conn.js ] || { echo "Hier liegt kein BTS (bts/ticker_conn.js fehlt). Bitte ins BTS-Verzeichnis wechseln." >&2; exit 1; }
 git rev-parse --git-dir >/dev/null 2>&1 || { echo "Das BTS-Verzeichnis ist kein git-Repository – siehe docs/BTS-UPGRADE.md (manuell)." >&2; exit 1; }
 command -v node >/dev/null || { echo "node nicht gefunden (wird von BTS ohnehin gebraucht)." >&2; exit 1; }
 
-if grep -q "bts-liveticker-erweiterung v2" bts/ticker_conn.js; then
-  echo "Die Erweiterung (v2) ist bereits eingespielt – nichts zu tun."
+if grep -q "bts-liveticker-erweiterung v$VERSION" bts/ticker_conn.js; then
+  echo "Die Erweiterung (v$VERSION) ist bereits eingespielt – nichts zu tun."
   exit 0
 fi
 
@@ -31,15 +32,25 @@ fi
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 echo "==> BTS auf Branch $BRANCH"
 
-# Upgrade von der ersten Version (nur Aufschläger/Rückschläger): Originaldatei
-# aus dem Original-Repo holen, dann die neue Version einsetzen
+# Upgrade von einer älteren Version (v1, v2): Originaldatei wiederherstellen – aus dem
+# letzten eigenen BTS-Commit ohne Erweiterung, sonst aus dem Original-Repo –, dann die
+# neue Version einsetzen
 if grep -q "craft_service" bts/ticker_conn.js; then
   echo "==> Ältere Version der Erweiterung gefunden – wird ersetzt"
-  if ! git rev-parse -q --verify '@{upstream}' >/dev/null; then
-    echo "Kein Original-Branch (upstream) bekannt – bitte bts/ticker_conn.js von Hand wiederherstellen." >&2
-    exit 1
+  RESTORED=""
+  for C in $(git log --format=%H -n 30 -- bts/ticker_conn.js); do
+    if git show "$C:bts/ticker_conn.js" 2>/dev/null | grep -q "craft_service"; then continue; fi
+    git show "$C:bts/ticker_conn.js" > bts/ticker_conn.js
+    RESTORED=1
+    break
+  done
+  if [ -z "$RESTORED" ]; then
+    if ! git rev-parse -q --verify '@{upstream}' >/dev/null; then
+      echo "Kein Original-Stand gefunden – bitte bts/ticker_conn.js von Hand wiederherstellen." >&2
+      exit 1
+    fi
+    git show '@{upstream}:bts/ticker_conn.js' > bts/ticker_conn.js
   fi
-  git show '@{upstream}:bts/ticker_conn.js' > bts/ticker_conn.js
   if grep -q "craft_service" bts/ticker_conn.js; then
     echo "Das Original-Repo enthält bereits eine Erweiterung – nichts zu tun."
     git checkout -- bts/ticker_conn.js

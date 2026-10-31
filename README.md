@@ -229,12 +229,12 @@ In BTS: Turnier bearbeiten → **Ticker** aktivieren →
 
 Auf `http://<IP>/admin` steht danach „verbunden“. Dort gibt es auch alle Overlay-Links.
 
-### BTS-Erweiterung v2 (optional)
+### BTS-Erweiterung v3 (optional)
 
 Der Liveticker funktioniert mit jedem unveränderten BTS. Eine kleine Erweiterung lässt BTS
 zusätzliche Daten mitschicken, die es ohnehin kennt:
 
-| Funktion | ohne Erweiterung | mit Erweiterung v2 |
+| Funktion | ohne Erweiterung | mit Erweiterung v3 |
 | --- | --- | --- |
 | Spielstände, Ergebnisse, Overlays, Ergebnis-Einblendung | ✓ | ✓ |
 | Spielern folgen, Hinweise bei Aufruf und Spielende, Spielerseite | ✓ | ✓ |
@@ -244,6 +244,7 @@ zusätzliche Daten mitschicken, die es ohnehin kennt:
 | Spieldauer | geschätzt (ab erstem Punkt) | genau (aus bup) |
 | „Als Nächstes“: Spiele in Vorbereitung und angesetzte Spiele | – | ✓ |
 | Verzug zum Zeitplan und voraussichtlicher Beginn (Schätzung) | – | ✓ |
+| Turnierbäume und Gruppen (`/baum`) | – | ✓ (ab v3) |
 
 Geändert wird nur die Datei `bts/ticker_conn.js` (die Ticker-Anbindung): BTS schickt
 zusätzliche Felder mit, Bedienung, Datenbank und alle anderen Funktionen von BTS bleiben
@@ -297,6 +298,7 @@ zusehen, braucht es eine öffentliche Adresse mit HTTPS, z. B.:
 | `/courts` | Overlay mehrerer Courts (Standard: alle belegten untereinander) |
 | `/?view=field` | Liveticker in der **Spielfeld-Ansicht** (wie in bup, umschaltbar auf der Seite) |
 | `/spieler` | **Meine Spieler**, alle Spieler, Vereine, Statistik (nach dem Vorbild des EM-Tickers) |
+| `/baum` | **Turnierbäume** aller Felder (KO-Baum mit Ergebnissen, live markiert; Gruppen als Tabelle), `?d=<Feld>` ein Feld – braucht BTS-Erweiterung v3 |
 | `/ergebnis` | Overlay: Bauchbinde bei Spielende (`?mode=bar` Laufband, `?test=1` zum Einrichten) |
 | `/feld/<nr>` | Großes Spielfeld eines Courts, z. B. für einen Bildschirm in der Halle |
 | `/felder?cols=3` | Alle Courts als Spielfeld im Raster; `cols` = Spalten (die Breite ergibt sich daraus), `c=1,2` nur diese Courts, `frei=0` freie Courts ausblenden |
@@ -359,7 +361,7 @@ Spielenden kommen nacheinander.
 
 ### Zeitplan-Schätzung
 
-Mit der BTS-Erweiterung v2 zeigt der Ticker oben den **Verzug zum Zeitplan** („ca. 25 min
+Mit der BTS-Erweiterung (ab v2) zeigt der Ticker oben den **Verzug zum Zeitplan** („ca. 25 min
 Verzug“) und bei „Als Nächstes“ den **voraussichtlichen Beginn** jedes Spiels („ca. 14:45“,
 darunter die angesetzte Zeit), ebenso auf der Spielerseite und in den Hinweisen für gefolgte
 Spieler. Grundlage:
@@ -397,8 +399,9 @@ Hallenseite nicht – die Ansicht folgt deshalb dieser Regel.
 
 - `tset` – alle Courts und die Spiele darauf, Turniername, turnier.de-Link, Turnierlogo
 - `tupdate_match` – neuer Spielstand eines Spiels (bei jedem Punkt)
-- mit Erweiterung v2 zusätzlich: Aufschlag und Positionen, Doppel, Vereine, Spieldauer und
-  in `tset` die nächsten Spiele mit Ansetzung (Details in [docs/BTS-UPGRADE.md](docs/BTS-UPGRADE.md))
+- mit Erweiterung zusätzlich: Aufschlag und Positionen, Doppel, Vereine, Spieldauer, in `tset`
+  die nächsten Spiele mit Ansetzung und (ab v3) alle Spiele aller Felder für die Turnierbäume
+  (Details in [docs/BTS-UPGRADE.md](docs/BTS-UPGRADE.md))
 
 BTS schickt nur Spiele, die gerade auf einem Court liegen. Der Liveticker merkt sich deshalb
 jedes Spiel, das einmal auf einem Court war, und baut daraus die Ergebnisliste (max. 400 Spiele).

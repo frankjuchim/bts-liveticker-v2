@@ -1,12 +1,12 @@
 diff --git a/bts/ticker_conn.js b/bts/ticker_conn.js
-index 3dea153..c5144c4 100644
+index 3dea153..7f0b449 100644
 --- a/bts/ticker_conn.js
 +++ b/bts/ticker_conn.js
-@@ -19,9 +19,55 @@ function craft_court(c) {
+@@ -19,9 +19,82 @@ function craft_court(c) {
  	return utils.pluck(c, ['num', 'match_id', '_id']);
  }
  
-+// bts-liveticker-erweiterung v2 – zusätzliche Daten für den Liveticker:
++// bts-liveticker-erweiterung v3 – zusätzliche Daten für den Liveticker:
 +// Aufschlag/Positionen, Doppel, Vereine, Spieldauer und die nächsten Spiele
 +function craft_service(m) {
 +	return {
@@ -19,16 +19,20 @@ index 3dea153..c5144c4 100644
 +function craft_liveticker(m) {
 +	const res = craft_service(m);
 +	if (typeof m.setup.is_doubles === 'boolean') res.d = m.setup.is_doubles;
++	if (m.setup.draw_id != null) res.di = String(m.setup.draw_id);
 +	(m.setup.teams || []).forEach((t, tidx) => {
 +		res['c' + tidx] = (t.players || []).map(p => (p && (p.club || p.nationality)) || '');
 +	});
 +	return res;
 +}
 +
-+// Die nächsten Spiele: in Vorbereitung zuerst, dann nach geplanter Zeit
-+function liveticker_upcoming(app, tournament_key, cb) {
++// Die nächsten Spiele (in Vorbereitung zuerst, dann nach geplanter Zeit) und
++// alle Spiele aller Felder für die Turnierbäume – aus einer Abfrage
++function liveticker_extra(app, tournament_key, cb) {
 +	app.db.matches.find({ tournament_key }, (err, matches) => {
-+		if (err || !Array.isArray(matches)) return cb(undefined);
++		if (err || !Array.isArray(matches)) return cb(undefined, undefined);
++		const names = t => ((t && t.players) || []).map(p => (p && p.name) || '');
++		const clubs = t => ((t && t.players) || []).map(p => (p && (p.club || p.nationality)) || '');
 +		const open = matches.filter(m => {
 +			const s = m.setup || {};
 +			if (s.now_on_court || m.end_ts || typeof m.team1_won === 'boolean') return false;
@@ -37,18 +41,41 @@ index 3dea153..c5144c4 100644
 +		});
 +		const key = m => [m.setup.state === 'preparation' ? 0 : 1, m.setup.scheduled_date || '9', m.setup.scheduled_time_str || '99:99', String(m.setup.match_num || '').padStart(6, '0')].join('|');
 +		open.sort((a, b) => (key(a) < key(b) ? -1 : (key(a) > key(b) ? 1 : 0)));
-+		cb(open.slice(0, 60).map(m => {
++		const upcoming = open.slice(0, 60).map(m => {
 +			const res = { _id: m._id, n: m.setup.event_name + ' ' + m.setup.match_name };
 +			m.setup.teams.forEach((t, tidx) => {
-+				res['p' + tidx] = t.players.map(p => p.name);
-+				res['c' + tidx] = t.players.map(p => (p && (p.club || p.nationality)) || '');
++				res['p' + tidx] = names(t);
++				res['c' + tidx] = clubs(t);
 +			});
 +			res.t = m.setup.scheduled_time_str || null;
 +			res.dt = m.setup.scheduled_date || null;
 +			res.st = m.setup.state || null;
 +			res.mn = m.setup.match_num || null;
++			if (m.setup.draw_id != null) res.di = String(m.setup.draw_id);
 +			return res;
-+		}));
++		});
++		const draws = matches.filter(m => m.setup && m.setup.draw_id != null).map(m => {
++			const s = m.setup;
++			const l = s.links || {};
++			const ids = (m.btp_match_ids && m.btp_match_ids[0]) || {};
++			const res = {
++				_id: m._id, di: String(s.draw_id), dn: s.draw_name || '', en: s.event_name || '',
++				sn: s.stage_name || '', so: s.stage_display_order, dp: s.draw_position,
++				r: s.match_name || '', ph: s.phase_name_raw || '', mn: s.match_num || null,
++				pl: ids.planning != null ? ids.planning : null,
++				f1: l.from1 != null ? l.from1 : null, f2: l.from2 != null ? l.from2 : null,
++				wt: l.winner_to != null ? l.winner_to : null, lt: l.loser_to != null ? l.loser_to : null,
++				p0: names((s.teams || [])[0]), p1: names((s.teams || [])[1]),
++				c0: clubs((s.teams || [])[0]), c1: clubs((s.teams || [])[1]),
++				s: m.network_score || null, w: typeof m.team1_won === 'boolean' ? m.team1_won : null,
++				st: s.state || null, t: s.scheduled_time_str || null, dt: s.scheduled_date || null,
++			};
++			if (Array.isArray(s.btp_group_rankings)) {
++				res.rk = s.btp_group_rankings.map(r => ({ p: r.place_from, n: names(r.team), c: clubs(r.team) }));
++			}
++			return res;
++		});
++		cb(upcoming, draws);
 +	});
 +}
  function craft_match(m) {
@@ -58,15 +85,17 @@ index 3dea153..c5144c4 100644
  	res.sf = m.setup.scoring_format;
  	res.n = m.setup.event_name + ' ' + m.setup.match_name;
  	m.setup.teams.forEach((t, tidx) => {
-@@ -114,9 +160,12 @@ class TickerConn {
+@@ -114,9 +187,14 @@ class TickerConn {
  				return;
  			}
  
 -			this.sendmsg({
 -				type: 'tset',
 -				event,
-+			liveticker_upcoming(this.app, this.tournament_key, (upcoming) => {
++			liveticker_extra(this.app, this.tournament_key, (upcoming, draws) => {
++				event.xv = 3;
 +				if (upcoming) event.upcoming = upcoming;
++				if (draws) event.draws = draws;
 +				this.sendmsg({
 +					type: 'tset',
 +					event,
@@ -74,7 +103,7 @@ index 3dea153..c5144c4 100644
  			});
  		});
  	}
-@@ -127,6 +176,7 @@ class TickerConn {
+@@ -127,6 +205,7 @@ class TickerConn {
  			match: {
  				_id: match._id,
  				s: match.network_score,

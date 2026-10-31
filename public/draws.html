@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turnierbäume – Liveticker</title>
+<link rel="stylesheet" href="/ticker.css">
+<link rel="stylesheet" href="/config.css">
+<link rel="icon" href="{{LOGO}}">
+</head>
+<body>
+<main class="wrap">
+  <div class="brand">
+    <img src="{{LOGO}}" alt="" data-brand-logo>
+    <div><b data-brand="title">{{TITLE}}</b><span data-brand="subtitle">{{SUBTITLE}}</span></div>
+  </div>
+  <header class="event">
+    <div class="t-text">
+      <h1 id="tName">Turnierbäume</h1>
+      <div class="t-meta"><a href="/" class="back">‹ Zum Liveticker</a></div>
+    </div>
+  </header>
+
+  <nav class="draw-pick" id="pick"></nav>
+  <section id="draw"></section>
+  <p class="muted" id="note" hidden></p>
+
+  <footer class="foot">
+    <span id="conn" class="conn">Verbinde …</span>
+  </footer>
+</main>
+
+<script src="/live.js"></script>
+<script src="/follow.js"></script>
+<script>
+// Turnierbäume und Gruppen aus BTS (Erweiterung v3): /baum, /baum?d=<Feld-ID>
+(function () {
+  'use strict';
+  BL.applyCommonParams();
+  var el = BL.el;
+  var state = null;
+  var data = null;           // { version, draws }
+  var loading = null;
+  var current = BL.params.get('d') || '';
+  var BOX_H = 56;            // Höhe eines Spiels im Baum (px)
+  var GAP = 8;               // Abstand zwischen zwei Spielen der ersten Runde
+  var COL_W = 230;           // Breite einer Runde
+  var COL_GAP = 34;          // Abstand zwischen den Runden (Verbindungslinien)
+
+  function load() {
+    if (loading) return;
+    loading = fetch('/api/draws', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+      data = d;
+      loading = null;
+      render();
+    }, function () { loading = null; });
+  }
+
+  // Live-Stand aus dem Ticker (Spielstand, Court) hat Vorrang vor dem Stand aus BTS
+  function live(m) {
+    var s = state && (state.matches || []).filter(function (x) { return x.id === m.id; })[0];
+    if (!s) return m;
+    return Object.assign({}, m, {
+      sets: s.sets && s.sets.length ? s.sets : m.sets,
+      winner: s.winner || m.winner,
+      status: s.status,
+      court: s.court || null,
+      home: s.home && s.home.length ? s.home : m.home,
+      away: s.away && s.away.length ? s.away : m.away,
+    });
+  }
+
+  function isGroup(d) {
+    return d.matches.some(function (m) { return /^G\d+$/i.test(m.phase || m.round); }) ||
+      (!!d.rankings && !d.matches.some(function (m) { return m.winnerTo; }));
+  }
+
+  // ---- Auswahl der Felder, nach Disziplin gruppiert
+  function renderPick() {
+    var pick = document.getElementById('pick');
+    pick.replaceChildren();
+    var byEvent = {};
+    var order = [];
+    data.draws.forEach(function (d) {
+      var ev = d.event || d.name;
+      if (!byEvent[ev]) { byEvent[ev] = []; order.push(ev); }
+      byEvent[ev].push(d);
+    });
+    order.forEach(function (ev) {
+      var row = el('div', 'pick-row');
+      row.appendChild(el('span', 'pick-ev', ev));
+      byEvent[ev].forEach(function (d) {
+        var label = d.name === ev ? (isGroup(d) ? 'Gruppe' : 'Hauptfeld') : d.name.replace(ev, '').replace(/^\s*-\s*/, '') || d.name;
+        var a = el('a', 'chip-btn' + (d.id === current ? ' on' : '') + (involves(d) ? ' followed' : ''), label);
+        a.href = '?d=' + encodeURIComponent(d.id);
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          current = d.id;
+          history.replaceState(null, '', '?d=' + encodeURIComponent(d.id));
+          render();
+        });
+        row.appendChild(a);
+      });
+      pick.appendChild(row);
+    });
+  }
+
+  function involves(d) {
+    return d.matches.some(function (m) { return Follow.involves(m); });
+  }
+
+  // ---- Ein Spiel als Kasten
+  function teamLine(m, side, placeholder) {
+    var row = el('div', 'bm-team' + (m.winner === side ? ' won' : ''));
+    var names = BL.players(m[side], true);
+    var who = el('span', 'bm-names');
+    if (!names.length) who.appendChild(el('span', 'muted', placeholder || 'offen'));
+    names.forEach(function (n, i) {
+      if (i) who.appendChild(document.createTextNode(' / '));
+      who.appendChild(Follow.nameEl('span', null, (m[side] || []).filter(Boolean)[i], n));
+    });
+    row.appendChild(who);
+    var sc = el('span', 'bm-sets');
+    (m.sets || []).forEach(function (s) {
+      sc.appendChild(el('span', (side === 'home' ? s.home > s.away : s.away > s.home) ? 'w' : '', String(s[side])));
+    });
+    row.appendChild(sc);
+    return row;
+  }
+
+  function matchBox(m, placeholders) {
+    m = live(m);
+    var box = el('div', 'bm' + (m.status === 'live' || m.status === 'called' ? ' live' : '') + (Follow.involves(m) ? ' followed' : ''));
+    var head = el('div', 'bm-head');
+    head.appendChild(el('span', null, m.num ? 'Spiel ' + m.num : (m.round || '')));
+    if (m.status === 'live' || m.status === 'called') {
+      var c = el('a', 'bm-court', 'Court ' + m.court + (m.status === 'live' ? ' · live' : ' · Aufruf'));
+      c.href = '/feld/' + encodeURIComponent(m.court);
+      head.appendChild(c);
+    } else if (!m.winner && m.time) head.appendChild(el('span', 'muted', m.time + ' Uhr'));
+    box.appendChild(head);
+    box.appendChild(teamLine(m, 'home', placeholders && placeholders[0]));
+    box.appendChild(teamLine(m, 'away', placeholders && placeholders[1]));
+    return box;
+  }
+
+  // ---- KO-Baum: Wurzel = Spiel, dessen Sieger nicht weiter in diesem Feld spielt.
+  // Kinder eines Spiels sind die Spiele, deren Sieger (winnerTo) in dieses Spiel gehen.
+  function tree(d) {
+    var byPl = {};
+    d.matches.forEach(function (m) { if (m.planning != null) byPl[m.planning] = m; });
+    function kids(m) {
+      return [m.from1, m.from2].map(function (p) {
+        var c = p != null ? byPl[p] : null;
+        return c && c.winnerTo === m.planning ? c : null;
+      });
+    }
+    function size(m) { return 1 + kids(m).reduce(function (n, c) { return n + (c ? size(c) : 0); }, 0); }
+    var roots = d.matches.filter(function (m) { return !m.winnerTo || !byPl[m.winnerTo]; });
+    roots.sort(function (a, b) { return size(b) - size(a); });
+    return { roots: roots, kids: kids };
+  }
+
+  function bracket(root, kids, title) {
+    // Tiefe bestimmen und Positionen vergeben (Blätter gleichmäßig verteilt)
+    var depth = 0;
+    (function walk(m, d) { depth = Math.max(depth, d); kids(m).forEach(function (c) { if (c) walk(c, d + 1); }); })(root, 0);
+    var unit = BOX_H + GAP;
+    // Höhe = Anzahl der Spiele ohne Vorrunde (Freilose lassen keine Lücken)
+    var leaves = 0;
+    (function count(m) { var ks = kids(m).filter(Boolean); if (!ks.length) leaves++; ks.forEach(count); })(root);
+    var height = leaves * unit;
+    var slot = 0;
+    var width = (depth + 1) * COL_W + depth * COL_GAP;
+    var wrap = el('div', 'bracket-wrap');
+    if (title) wrap.appendChild(el('h3', 'bracket-title', title));
+    var scroller = el('div', 'bracket-scroll');
+    var b = el('div', 'bracket');
+    b.style.width = width + 'px';
+    b.style.height = (height + (title ? 0 : 24)) + 'px';
+    var lines = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    lines.setAttribute('class', 'b-lines');
+    lines.setAttribute('width', width);
+    lines.setAttribute('height', height + (title ? 0 : 24));
+    b.appendChild(lines);
+    var rounds = [];
+    var top = title ? 0 : 24;   // Platz für die Rundennamen
+    function place(m, d) {
+      var col = depth - d;
+      var x = col * (COL_W + COL_GAP);
+      if (!rounds[col]) rounds[col] = m.round;
+      var ks = kids(m);
+      // erst die Vorrunden setzen, das Spiel dann mittig dazwischen
+      var cys = ks.map(function (c) { return c ? place(c, d + 1) : null; });
+      var known = cys.filter(function (y) { return y != null; });
+      var cy = known.length ? known.reduce(function (a, b) { return a + b; }, 0) / known.length : top + (slot++ + 0.5) * unit;
+      var ph = ks.map(function (c) { return c && c.num ? 'Sieger Spiel ' + c.num : null; });
+      var box = matchBox(m, ph);
+      box.style.left = x + 'px';
+      box.style.top = (cy - BOX_H / 2) + 'px';
+      box.style.width = COL_W + 'px';
+      box.style.height = BOX_H + 'px';
+      b.appendChild(box);
+      ks.forEach(function (c, k) {
+        if (!c) return;
+        var ccy = cys[k];
+        var x1 = x - COL_GAP;
+        var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        // vom rechten Rand des Kindes zur passenden Zeile des Spiels
+        var ty = cy - BOX_H / 2 + 18 + k * 19;
+        p.setAttribute('d', 'M' + x1 + ',' + ccy + ' H' + (x1 + COL_GAP / 2) + ' V' + ty + ' H' + x);
+        lines.appendChild(p);
+      });
+      return cy;
+    }
+    place(root, 0);
+    if (!title) rounds.forEach(function (r, col) {
+      var h = el('div', 'b-round', roundName(r));
+      h.style.left = (col * (COL_W + COL_GAP)) + 'px';
+      h.style.width = COL_W + 'px';
+      b.appendChild(h);
+    });
+    scroller.appendChild(b);
+    wrap.appendChild(scroller);
+    return wrap;
+  }
+
+  function roundName(r) {
+    return { VF: 'Viertelfinale', HF: 'Halbfinale', Finale: 'Finale', R16: 'Achtelfinale', R32: '1/16-Finale', R64: '1/32-Finale' }[r] ||
+      (/^\d+\/\d+$/.test(r || '') ? 'Platz ' + r : (r || ''));
+  }
+
+  // ---- Gruppe: Tabelle (BTP-Platzierung, sonst aus den Ergebnissen) und Spiele
+  function group(d) {
+    var wrap = el('div', 'group');
+    var stats = {};
+    function team(names, clubs) {
+      var key = names.join(' / ');
+      return stats[key] || (stats[key] = { names: names, clubs: clubs, played: 0, won: 0, sets: 0, setsAgainst: 0, pts: 0, ptsAgainst: 0 });
+    }
+    d.matches.forEach(function (m0) {
+      var m = live(m0);
+      if (!m.home.length || !m.away.length) return;
+      var h = team(m.home, m.homeClubs);
+      var a = team(m.away, m.awayClubs);
+      if (!m.winner) return;
+      h.played++; a.played++;
+      (m.winner === 'home' ? h : a).won++;
+      m.sets.forEach(function (s) {
+        if (s.home > s.away) { h.sets++; a.setsAgainst++; } else if (s.away > s.home) { a.sets++; h.setsAgainst++; }
+        h.pts += s.home; h.ptsAgainst += s.away; a.pts += s.away; a.ptsAgainst += s.home;
+      });
+    });
+    var rows = Object.keys(stats).map(function (k) { return stats[k]; });
+    var rank = {};
+    (d.rankings || []).forEach(function (r) { rank[r.names.join(' / ')] = r.place; });
+    rows.sort(function (x, y) {
+      var rx = rank[x.names.join(' / ')], ry = rank[y.names.join(' / ')];
+      if (rx && ry) return rx - ry;
+      return (y.won - x.won) || ((y.sets - y.setsAgainst) - (x.sets - x.setsAgainst)) || ((y.pts - y.ptsAgainst) - (x.pts - x.ptsAgainst));
+    });
+    var t = el('table', 'group-table');
+    var hd = el('tr');
+    ['', 'Spieler', 'Sp.', 'Siege', 'Sätze', 'Punkte'].forEach(function (h) { hd.appendChild(el('th', null, h)); });
+    t.appendChild(hd);
+    rows.forEach(function (r, i) {
+      var tr = el('tr', Follow.involves({ home: r.names, away: [], homeClubs: r.clubs, awayClubs: [] }) ? 'followed' : '');
+      tr.appendChild(el('td', 'g-place', String(rank[r.names.join(' / ')] || i + 1)));
+      var who = el('td');
+      r.names.forEach(function (n, k) {
+        if (k) who.appendChild(document.createTextNode(' / '));
+        who.appendChild(Follow.nameEl('span', null, n));
+      });
+      var cl = (r.clubs || []).filter(function (c, k, arr) { return c && arr.indexOf(c) === k; }).join(' / ');
+      if (cl) who.appendChild(el('span', 'club', cl));
+      tr.appendChild(who);
+      tr.appendChild(el('td', null, String(r.played)));
+      tr.appendChild(el('td', null, String(r.won)));
+      tr.appendChild(el('td', null, r.sets + ':' + r.setsAgainst));
+      tr.appendChild(el('td', null, r.pts + ':' + r.ptsAgainst));
+      t.appendChild(tr);
+    });
+    var sc = el('div', 'table-scroll');
+    sc.appendChild(t);
+    wrap.appendChild(sc);
+    var list = el('div', 'group-matches');
+    d.matches.forEach(function (m) { list.appendChild(matchBox(m)); });
+    wrap.appendChild(el('h3', 'bracket-title', 'Spiele'));
+    wrap.appendChild(list);
+    return wrap;
+  }
+
+  function render() {
+    var note = document.getElementById('note');
+    var box = document.getElementById('draw');
+    var t = (state && state.tournament) || {};
+    document.getElementById('tName').textContent = t.name ? t.name + ' – Turnierbäume' : 'Turnierbäume';
+    if (!data || !data.draws) {
+      document.getElementById('pick').replaceChildren();
+      box.replaceChildren();
+      note.hidden = false;
+      note.textContent = state && state.btsExtVersion != null && state.btsExtVersion < 3
+        ? 'Die Turnierbäume brauchen die BTS-Erweiterung v3. Sie wird auf dem BTS-Rechner eingespielt (Hinweis im Admin-Panel).'
+        : 'Noch keine Turnierbäume – sie kommen mit dem nächsten Stand aus BTS.';
+      return;
+    }
+    if (!data.draws.length) { note.hidden = false; note.textContent = 'In BTS sind keine Felder angelegt.'; return; }
+    note.hidden = true;
+    if (!data.draws.some(function (d) { return d.id === current; })) {
+      var mine = data.draws.filter(involves)[0];
+      current = (mine || data.draws[0]).id;
+    }
+    renderPick();
+    var d = data.draws.filter(function (x) { return x.id === current; })[0];
+    var out = el('div');
+    out.appendChild(el('h2', null, d.name + (d.stage && d.name.indexOf(d.stage) < 0 ? ' · ' + d.stage : '')));
+    if (isGroup(d)) out.appendChild(group(d));
+    else {
+      var tr = tree(d);
+      tr.roots.forEach(function (r, i) {
+        out.appendChild(bracket(r, tr.kids, i === 0 ? null : (roundName(r.round) || 'Weitere Spiele')));
+      });
+    }
+    // Scrollposition der Bäume behalten
+    var old = box.querySelectorAll('.bracket-scroll');
+    var pos = Array.prototype.map.call(old, function (s) { return s.scrollLeft; });
+    box.replaceChildren(out);
+    box.querySelectorAll('.bracket-scroll').forEach(function (s, i) { if (pos[i]) s.scrollLeft = pos[i]; });
+  }
+
+  BL.connect(function (st) {
+    state = st;
+    var c = document.getElementById('conn');
+    c.textContent = st && st.bts && st.bts.connected ? 'Live verbunden' : 'Keine Verbindung zur Turniersoftware';
+    c.className = 'conn ' + (st && st.bts && st.bts.connected ? 'ok' : 'warn');
+    if (st && st.drawsVersion && (!data || data.version !== st.drawsVersion)) load();
+    else render();
+  });
+  Follow.onChange(render);
+})();
+</script>
+</body>
+</html>

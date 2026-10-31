@@ -20,7 +20,10 @@
       <h1 id="tName">Turnier-Liveticker</h1>
       <div class="t-meta"><span id="tMeta"></span><a class="sched-chip" id="schedBar" href="#upSec" hidden></a></div>
     </div>
-    <a class="t-link" id="tLink" target="_blank" rel="noopener" hidden>Alle Spiele auf turnier.de ›</a>
+    <div class="t-links">
+      <a class="t-link" id="treeLink" href="/baum" hidden>Turnierbäume ›</a>
+      <a class="t-link" id="tLink" target="_blank" rel="noopener" hidden>Alle Spiele auf turnier.de ›</a>
+    </div>
   </header>
 
   <div class="tools">
@@ -108,6 +111,15 @@
     return el('span', 'badge done', 'Beendet');
   }
 
+  // Disziplin führt zum Turnierbaum (nur mit BTS-Erweiterung v3)
+  function drawLink(tag, cls, m, text) {
+    if (!m.drawId || !(last && last.drawsVersion)) return el(tag, cls, text);
+    var a = el('a', cls + ' draw-link', text);
+    a.href = '/baum?d=' + encodeURIComponent(m.drawId);
+    a.title = 'Turnierbaum anzeigen';
+    return a;
+  }
+
   // „Court 1“ führt zum großen Spielfeld dieses Courts
   function courtLink(nr) {
     var a = el('a', 'court', 'Court ' + nr);
@@ -144,7 +156,7 @@
       }
       return card;
     }
-    head.appendChild(el('span', 'disc', m.name));
+    head.appendChild(drawLink('span', 'disc', m, m.name));
     head.appendChild(badge(m));
     card.appendChild(head);
     if (Follow.involves(m)) card.classList.add('followed');
@@ -177,7 +189,7 @@
   function gameRow(m) {
     var row = el('article', 'game ' + m.status);
     var title = el('div', 'g-title');
-    title.appendChild(el('span', 'g-name', m.name));
+    title.appendChild(drawLink('span', 'g-name', m, m.name));
     var meta = [];
     if (m.lastCourt) meta.push('Court ' + m.lastCourt);
     if (m.finishedAt) meta.push(BL.time(m.finishedAt) + ' Uhr');
@@ -225,7 +237,7 @@
     }
     row.appendChild(when);
     var mid = el('div', 'up-main');
-    mid.appendChild(el('div', 'up-name', u.name + (u.num ? ' · Spiel ' + u.num : '')));
+    mid.appendChild(drawLink('div', 'up-name', u, u.name + (u.num ? ' · Spiel ' + u.num : '')));
     var teams = el('div', 'up-teams');
     ['home', 'away'].forEach(function (side, i) {
       var t = el('div', 'up-team');
@@ -361,6 +373,7 @@
       logo.style.background = t.logoBg || '';
       logo.hidden = false;
     } else logo.hidden = true;
+    document.getElementById('treeLink').hidden = !(state && state.drawsVersion);
     var link = document.getElementById('tLink');
     link.hidden = !t.url;
     if (t.url) {

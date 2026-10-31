@@ -234,7 +234,7 @@ test('Erweiterung v2: Vereine, Spieldauer und die nächsten Spiele', () => {
   assert.strictEqual(v.upcoming.length, 2);
   assert.deepStrictEqual(v.upcoming[0], {
     id: 'u1', name: 'HD U19', home: ['A A', 'B B'], away: ['C C', 'D D'], homeClubs: ['X', 'X'], awayClubs: ['Y', 'Y'],
-    time: '14:30', date: '2026-11-01', state: 'preparation', num: '7',
+    time: '14:30', date: '2026-11-01', state: 'preparation', num: '7', drawId: null,
   });
   // Spieldauer aus BTS (bup), sobald das Spiel beendet ist
   assert.strictEqual(v.matches[0].duration, null, 'läuft noch');
@@ -310,4 +310,44 @@ test('Positionen im Doppel fortschreiben, wenn BTS sie nicht mitschickt', () => 
   assert.strictEqual(store.view(s).matches[0].posFrom, 'empty');     // bup kennt sie nicht (nicht ausgewählt)
   store.applyMatchUpdate(s, { _id: 'm', s: [[21, 1], [2, 0]], ts: true, pe: [[true, true], [false, true]] }, '2026-10-29T10:05:00.000Z');
   assert.strictEqual(store.view(s).matches[0].posFrom, 'invalid');   // fremdes Format (Simulation)
+});
+
+test('Erweiterung v3: Felder für die Turnierbäume', () => {
+  const s = store.emptyStore();
+  const dm = (id, pl, extra) => Object.assign({
+    _id: id, di: 7, dn: 'HE O19', en: 'HE O19', sn: 'Hauptfeld', r: 'HF', mn: Number(id.slice(1)), pl,
+    p0: ['A'], p1: ['B'], c0: ['X'], c1: ['Y'], s: null, w: null, st: 'scheduled',
+  }, extra);
+  store.applyTset(s, {
+    xv: 3,
+    courts: [{ _id: 'c1', num: 1, match_id: 'm1' }],
+    matches: [{ _id: 'm1', n: 'HE O19 HF', p0: ['A'], p1: ['B'], s: [[3, 2]], ts: true, pe: [true, true], di: 7 }],
+    upcoming: [],
+    draws: [
+      dm('m1', 5, { f1: 1, f2: 2, wt: 7 }),
+      dm('m2', 6, { f1: 3, f2: 4, wt: 7, s: [[21, 10], [21, 0]], w: true, st: 'finished' }),
+      dm('m3', 7, { r: 'Finale', f1: 5, f2: 6, p0: [], p1: ['A'] }),
+    ],
+  }, '2026-11-14T10:00:00.000Z');
+  const v = store.view(s);
+  assert.strictEqual(v.btsExtVersion, 3);
+  assert.strictEqual(v.btsExtLatest, 3);
+  assert.ok(v.drawsVersion);
+  assert.strictEqual(v.matches[0].drawId, '7');
+  const d = store.drawsView(s).draws;
+  assert.strictEqual(d.length, 1);
+  assert.strictEqual(d[0].name, 'HE O19');
+  assert.strictEqual(d[0].matches.length, 3);
+  const m2 = d[0].matches.find((m) => m.id === 'm2');
+  assert.strictEqual(m2.winner, 'home');
+  assert.deepStrictEqual(m2.sets, [{ home: 21, away: 10 }, { home: 21, away: 0 }]);
+  assert.strictEqual(m2.winnerTo, '7');
+  // bleibt nach Neustart erhalten
+  const r = store.restore(JSON.parse(JSON.stringify(s)));
+  assert.strictEqual(store.drawsView(r).draws.length, 1);
+  // ältere Erweiterung (v2) ohne Felder
+  const s2 = store.emptyStore();
+  store.applyTset(s2, { courts: [{ _id: 'c1', num: 1, match_id: 'm1' }], matches: [{ _id: 'm1', p0: ['A'], p1: ['B'], ts: true }], upcoming: [] }, '2026-11-14T10:00:00.000Z');
+  assert.strictEqual(store.view(s2).btsExtVersion, 2);
+  assert.strictEqual(store.drawsView(s2).draws, null);
 });

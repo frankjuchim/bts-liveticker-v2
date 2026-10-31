@@ -299,6 +299,7 @@ function serveStatic(req, res, pathname) {
   if (!file && /^\/feld\/[^/]+$/.test(clean)) file = 'field.html';
   if (clean === '/ergebnis') file = 'result.html';
   if (clean === '/spieler') file = 'players.html';
+  if (clean === '/baum') file = 'draws.html';
   if (clean === '/felder') file = 'fields.html';
   if (!file) file = clean.replace(/^\/+/, '');
   serveFile(res, file);
@@ -628,6 +629,7 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && pathname === '/api/bts-reconnect') return handleBtsReconnect(req, res);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, '{"error":"method"}');
   if (pathname === '/api/state') return send(res, 200, stateJson);
+  if (pathname === '/api/draws') return send(res, 200, JSON.stringify(store.drawsView(data)));
   if (pathname === '/api/brand') return send(res, 200, JSON.stringify(brandInfo()));
   if (pathname === '/api/admin') {
     if (!requireAdmin(req, res)) return;
