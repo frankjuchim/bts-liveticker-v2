@@ -380,31 +380,48 @@
       tiles.push({ big: Follow.duration(total), label: 'Spielzeit insgesamt', sub: 'auf allen Courts zusammen' });
       var s1 = withDur.filter(function (m) { return !isDoubles(m); }).map(function (m) { return m.duration; });
       var d1 = withDur.filter(isDoubles).map(function (m) { return m.duration; });
-      tiles.push({ big: Follow.duration(avg(withDur.map(function (m) { return m.duration; }))), label: 'Ø Spieldauer',
-        sub: [s1.length ? 'Einzel ' + Follow.duration(avg(s1)) : '', d1.length ? 'Doppel ' + Follow.duration(avg(d1)) : ''].filter(Boolean).join(' · ') });
+      var both = s1.length && d1.length;
+      var durSplit = function (fn) { return both ? 'Einzel ' + Follow.duration(fn(s1)) + ' · Doppel ' + Follow.duration(fn(d1)) : null; };
+      tiles.push({ big: Follow.duration(avg(withDur.map(function (m) { return m.duration; }))), label: 'Ø Spieldauer', split: durSplit(avg),
+        sub: both ? null : (s1.length ? 'nur Einzel' : 'nur Doppel') });
       var longest = withDur.slice().sort(function (a, b) { return b.duration - a.duration; })[0];
-      tiles.push({ big: Follow.duration(longest.duration), label: 'Längstes Spiel', sub: desc(longest) });
+      tiles.push({ big: Follow.duration(longest.duration), label: 'Längstes Spiel', sub: desc(longest),
+        split: durSplit(function (l) { return Math.max.apply(null, l); }) });
       var shortest = withDur.slice().sort(function (a, b) { return a.duration - b.duration; })[0];
-      tiles.push({ big: Follow.duration(shortest.duration), label: 'Kürzestes Spiel', sub: desc(shortest) });
+      tiles.push({ big: Follow.duration(shortest.duration), label: 'Kürzestes Spiel', sub: desc(shortest),
+        split: durSplit(function (l) { return Math.min.apply(null, l); }) });
     }
     if (done.length) {
-      tiles.push({ big: String(Math.round(avg(done.map(pts)))), label: 'Ø Punkte je Spiel', sub: done.reduce(function (a, m) { return a + pts(m); }, 0) + ' Punkte insgesamt' });
+      // Einzel und Doppel getrennt (zweite Zeile der Kachel) – nur wenn es beides gibt
+      var singles = done.filter(function (m) { return !isDoubles(m); });
+      var doubles = done.filter(isDoubles);
+      var split = function (fn) {
+        if (!singles.length || !doubles.length) return null;
+        return 'Einzel ' + fn(singles) + ' · Doppel ' + fn(doubles);
+      };
+      var avgPts = function (list) { return Math.round(avg(list.map(pts))); };
+      var maxPts = function (list) { return Math.max.apply(null, list.map(pts)); };
+      var threeOf = function (list) { return list.filter(function (m) { return m.sets.length >= 3; }).length; };
+      // gedreht: Sieger hat den ersten Satz verloren
+      var turned = function (list) {
+        return list.filter(function (m) { var f = m.sets[0]; return f && (m.winner === 'home' ? f.away > f.home : f.home > f.away); }).length;
+      };
+      var setsOf = function (list) { var a = []; list.forEach(function (m) { m.sets.forEach(function (x) { a.push({ s: x, m: m }); }); }); return a; };
+      var extOf = function (list) { return setsOf(list).filter(function (x) { return Math.max(x.s.home, x.s.away) > 21; }).length; };
+      var longestSet = function (list) { return setsOf(list).sort(function (a, b) { return (b.s.home + b.s.away) - (a.s.home + a.s.away); })[0]; };
+      var setText = function (x) { return x ? Math.max(x.s.home, x.s.away) + ':' + Math.min(x.s.home, x.s.away) : '–'; };
+
+      tiles.push({ big: String(avgPts(done)), label: 'Ø Punkte je Spiel', sub: done.reduce(function (a, m) { return a + pts(m); }, 0) + ' Punkte insgesamt', split: split(avgPts) });
       var most = done.slice().sort(function (a, b) { return pts(b) - pts(a); })[0];
-      tiles.push({ big: String(pts(most)), label: 'Meiste Punkte in einem Spiel', sub: desc(most) });
-      var three = done.filter(function (m) { return m.sets.length >= 3; }).length;
-      tiles.push({ big: pct(three, done.length), label: 'Spiele über drei Sätze', sub: three + ' von ' + done.length });
-      // Satz nach Rückstand gedreht: Sieger hat den ersten Satz verloren
-      var comeback = done.filter(function (m) {
-        var f = m.sets[0];
-        return f && (m.winner === 'home' ? f.away > f.home : f.home > f.away);
-      });
-      tiles.push({ big: String(comeback.length), label: 'Gedrehte Spiele', sub: 'Sieg nach verlorenem ersten Satz' });
-      var allSets = [];
-      done.forEach(function (m) { m.sets.forEach(function (s) { allSets.push({ s: s, m: m }); }); });
-      var ext = allSets.filter(function (x) { return Math.max(x.s.home, x.s.away) > 21; });
-      tiles.push({ big: String(ext.length), label: 'Verlängerte Sätze', sub: 'über 21 Punkte (von ' + allSets.length + ' Sätzen)' });
-      var bestSet = allSets.slice().sort(function (a, b) { return (b.s.home + b.s.away) - (a.s.home + a.s.away); })[0];
-      if (bestSet) tiles.push({ big: bestSet.s.home + ':' + bestSet.s.away, label: 'Längster Satz', sub: desc(bestSet.m) });
+      tiles.push({ big: String(pts(most)), label: 'Meiste Punkte in einem Spiel', sub: desc(most), split: split(maxPts) });
+      var three = threeOf(done);
+      tiles.push({ big: pct(three, done.length), label: 'Spiele über drei Sätze', sub: three + ' von ' + done.length,
+        split: split(function (l) { return pct(threeOf(l), l.length); }) });
+      tiles.push({ big: String(turned(done)), label: 'Gedrehte Spiele', sub: 'Sieg nach verlorenem ersten Satz', split: split(turned) });
+      tiles.push({ big: String(extOf(done)), label: 'Verlängerte Sätze', sub: 'über 21 Punkte (von ' + setsOf(done).length + ' Sätzen)', split: split(extOf) });
+      var bestSet = longestSet(done);
+      if (bestSet) tiles.push({ big: bestSet.s.home + ':' + bestSet.s.away, label: 'Längster Satz', sub: desc(bestSet.m),
+        split: split(function (l) { return setText(longestSet(l)); }) });
     }
     var plist = Object.keys(st.players).map(function (n) { return st.players[n]; });
     var top = plist.filter(function (p) { return p.wins; }).sort(function (a, b) { return b.wins - a.wins || a.losses - b.losses; })[0];
@@ -422,6 +439,7 @@
       var d = el('div', 'stat');
       d.appendChild(el('b', null, t.big));
       d.appendChild(el('span', 'stat-label', t.label));
+      if (t.split) d.appendChild(el('span', 'stat-split', t.split));
       if (t.sub) d.appendChild(el('span', 'muted', t.sub));
       box.appendChild(d);
     });
