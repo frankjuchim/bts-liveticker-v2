@@ -55,7 +55,7 @@ try { testMode = JSON.parse(fs.readFileSync(TEST_FILE, 'utf8')).on === true; } c
 
 // Anzeige-Optionen aus dem Admin-Panel (Standard: alles an)
 const DISPLAY_FILE = path.join(DATA_DIR, 'display.json');
-const DISPLAY_DEFAULTS = { flagsCards: true, flagsField: true };
+const DISPLAY_DEFAULTS = { flagsCards: true, flagsField: true, flagsDraws: true };
 let display = Object.assign({}, DISPLAY_DEFAULTS);
 try {
   const d = JSON.parse(fs.readFileSync(DISPLAY_FILE, 'utf8'));

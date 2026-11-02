@@ -32,6 +32,7 @@
 
 <script src="/live.js"></script>
 <script src="/follow.js"></script>
+<script src="/nations.js"></script>
 <script>
 // Turnierbäume und Gruppen aus BTS (Erweiterung v3): /baum, /baum?d=<Feld-ID>
 (function () {
@@ -67,6 +68,8 @@
       court: s.court || null,
       home: s.home && s.home.length ? s.home : m.home,
       away: s.away && s.away.length ? s.away : m.away,
+      homeNations: s.homeNations && s.homeNations.some(Boolean) ? s.homeNations : m.homeNations,
+      awayNations: s.awayNations && s.awayNations.some(Boolean) ? s.awayNations : m.awayNations,
     });
   }
 
@@ -110,6 +113,30 @@
   }
 
   // ---- Ein Spiel als Kasten
+  // Flaggen der Nationen (Admin-Panel „Flaggen“, nur wenn mehr als eine Nation mitspielt)
+  var flagsOn = false;
+  function flagsUseful() {
+    if (state && state.display && state.display.flagsDraws === false) return false;
+    var seen = {};
+    var n = 0;
+    (data && data.draws || []).forEach(function (d) {
+      d.matches.forEach(function (m) {
+        (m.homeNations || []).concat(m.awayNations || []).forEach(function (c) {
+          if (c && Nations.iso(c) && !seen[c]) { seen[c] = 1; n++; }
+        });
+      });
+    });
+    return n > 1;
+  }
+  function nameWithFlag(m, side, name, text) {
+    var span = Follow.nameEl('span', null, name, text);
+    if (!flagsOn) return span;
+    var i = (m[side] || []).indexOf(name);
+    var f = i >= 0 && Nations.flag(((side === 'home' ? m.homeNations : m.awayNations) || [])[i]);
+    if (f) span.insertBefore(f, span.firstChild);
+    return span;
+  }
+
   function teamLine(m, side, placeholder) {
     var row = el('div', 'bm-team' + (m.winner === side ? ' won' : ''));
     var names = BL.players(m[side], true);
@@ -117,7 +144,7 @@
     if (!names.length) who.appendChild(el('span', 'muted', placeholder || 'offen'));
     names.forEach(function (n, i) {
       if (i) who.appendChild(document.createTextNode(' / '));
-      who.appendChild(Follow.nameEl('span', null, (m[side] || []).filter(Boolean)[i], n));
+      who.appendChild(nameWithFlag(m, side, (m[side] || []).filter(Boolean)[i], n));
     });
     row.appendChild(who);
     var sc = el('span', 'bm-sets');
@@ -285,7 +312,7 @@
     var who = el('span', 'bm-names');
     BL.players(m[side], true).forEach(function (n, i) {
       if (i) who.appendChild(document.createTextNode(' / '));
-      who.appendChild(Follow.nameEl('span', null, (m[side] || []).filter(Boolean)[i], n));
+      who.appendChild(nameWithFlag(m, side, (m[side] || []).filter(Boolean)[i], n));
     });
     row.appendChild(who);
     box.appendChild(row);
@@ -302,15 +329,15 @@
   function group(d) {
     var wrap = el('div', 'group');
     var stats = {};
-    function team(names, clubs) {
+    function team(names, clubs, nations) {
       var key = names.join(' / ');
-      return stats[key] || (stats[key] = { names: names, clubs: clubs, played: 0, won: 0, sets: 0, setsAgainst: 0, pts: 0, ptsAgainst: 0 });
+      return stats[key] || (stats[key] = { names: names, clubs: clubs, nations: nations || [], played: 0, won: 0, sets: 0, setsAgainst: 0, pts: 0, ptsAgainst: 0 });
     }
     d.matches.forEach(function (m0) {
       var m = live(m0);
       if (!m.home.length || !m.away.length) return;
-      var h = team(m.home, m.homeClubs);
-      var a = team(m.away, m.awayClubs);
+      var h = team(m.home, m.homeClubs, m.homeNations);
+      var a = team(m.away, m.awayClubs, m.awayNations);
       if (!m.winner) return;
       h.played++; a.played++;
       (m.winner === 'home' ? h : a).won++;
@@ -337,7 +364,7 @@
       var who = el('td');
       r.names.forEach(function (n, k) {
         if (k) who.appendChild(document.createTextNode(' / '));
-        who.appendChild(Follow.nameEl('span', null, n));
+        who.appendChild(nameWithFlag({ home: r.names, homeNations: r.nations }, 'home', n));
       });
       var cl = (r.clubs || []).filter(function (c, k, arr) { return c && arr.indexOf(c) === k; }).join(' / ');
       if (cl) who.appendChild(el('span', 'club', cl));
@@ -379,6 +406,7 @@
       current = (mine || data.draws[0]).id;
     }
     renderPick();
+    flagsOn = flagsUseful();
     var d = data.draws.filter(function (x) { return x.id === current; })[0];
     var out = el('div');
     out.appendChild(el('h2', null, d.name + (d.stage && d.name.indexOf(d.stage) < 0 ? ' · ' + d.stage : '')));

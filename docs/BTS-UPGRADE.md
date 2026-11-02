@@ -29,7 +29,7 @@ die ältere Version. Bis dahin läuft alles Bisherige weiter, nur die neuen Teil
 | „Als Nächstes“: Spiele in Vorbereitung und angesetzte Spiele | – | ✓ |
 | Verzug zum Zeitplan und voraussichtlicher Beginn (Schätzung) | – | ✓ |
 | Turnierbäume und Gruppen (`/baum`) | – | ✓ (ab v3) |
-| Flaggen der Nationen auf Karten und Spielfeldern (wenn mehr als eine Nation mitspielt, im Admin-Panel abschaltbar) | – | ✓ (ab v4) |
+| Flaggen der Nationen auf Karten, Spielfeldern und in den Turnierbäumen (wenn mehr als eine Nation mitspielt, im Admin-Panel abschaltbar) | – | ✓ (ab v4) |
 
 Ohne Erweiterung funktioniert der Liveticker ganz normal, nur ohne diese Angaben (die
 Spieldauer schätzt er dann selbst vom ersten Punkt bis zum Spielende).

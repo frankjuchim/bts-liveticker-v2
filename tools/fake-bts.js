@@ -145,7 +145,7 @@ function node(di, name, round, pl, a, b) {
   return {
     _id: 'draw_' + di + '_' + pl, di: String(di), dn: name, en: name, sn: 'Hauptfeld', r: round, ph: round,
     mn: ++drawMatchNr, pl, f1: null, f2: null, wt: null, lt: null,
-    p0: a ? a.p : [], p1: b ? b.p : [], c0: a ? a.c : [], c1: b ? b.c : [],
+    p0: a ? a.p : [], p1: b ? b.p : [], c0: a ? a.c : [], c1: b ? b.c : [], n0: a ? a.n : [], n1: b ? b.n : [],
     s: null, w: null, st: a && b ? 'scheduled' : 'incomplete', t: '1' + (drawMatchNr % 8) + ':' + (drawMatchNr % 4) + '0', dt: null,
   };
 }
@@ -156,8 +156,8 @@ function groupDraw(di, name, entries) {
     }
   }
 }
-const single = (n) => { const p = PEOPLE[n % PEOPLE.length]; return { p: [p.name], c: [p.club] }; };
-const double = (n) => { const a = PEOPLE[n % PEOPLE.length], b = PEOPLE[(n + 7) % PEOPLE.length]; return { p: [a.name, b.name], c: [a.club, b.club] }; };
+const single = (n) => { const p = PEOPLE[n % PEOPLE.length]; return { p: [p.name], c: [p.club], n: [p.nat] }; };
+const double = (n) => { const a = PEOPLE[n % PEOPLE.length], b = PEOPLE[(n + 7) % PEOPLE.length]; return { p: [a.name, b.name], c: [a.club, b.club], n: [a.nat, b.nat] }; };
 koDraw(1, 'HE O19', Array.from({ length: 12 }, (_, i) => single(i)));
 koDraw(2, 'DE U17', Array.from({ length: 8 }, (_, i) => single(i + 20)));
 groupDraw(3, 'HD U19', Array.from({ length: 4 }, (_, i) => double(i + 30)));
@@ -172,12 +172,12 @@ function advanceDraw() {
   if (!ready.length) return;
   const m = ready.sort((a, b) => a.mn - b.mn)[0];
   Object.assign(m, randomScore(), { st: 'finished' });
-  const win = m.w ? { p: m.p0, c: m.c0 } : { p: m.p1, c: m.c1 };
-  const lose = m.w ? { p: m.p1, c: m.c1 } : { p: m.p0, c: m.c0 };
+  const win = m.w ? { p: m.p0, c: m.c0, n: m.n0 } : { p: m.p1, c: m.c1, n: m.n1 };
+  const lose = m.w ? { p: m.p1, c: m.c1, n: m.n1 } : { p: m.p0, c: m.c0, n: m.n0 };
   for (const [to, team] of [[m.wt, win], [m.lt, lose]]) {
     const t = to != null && DRAWS.find((x) => x.pl === to);
     if (!t) continue;
-    if (t.f1 === m.pl) { t.p0 = team.p; t.c0 = team.c; } else { t.p1 = team.p; t.c1 = team.c; }
+    if (t.f1 === m.pl) { t.p0 = team.p; t.c0 = team.c; t.n0 = team.n; } else { t.p1 = team.p; t.c1 = team.c; t.n1 = team.n; }
     if (t.p0.length && t.p1.length) t.st = 'scheduled';
   }
 }
