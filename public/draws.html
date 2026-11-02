@@ -166,9 +166,24 @@
     var depth = 0;
     (function walk(m, d) { depth = Math.max(depth, d); kids(m).forEach(function (c) { if (c) walk(c, d + 1); }); })(root, 0);
     var unit = BOX_H + GAP;
-    // Höhe = Anzahl der Spiele ohne Vorrunde (Freilose lassen keine Lücken)
+    // Freilose: BTS übernimmt sie nicht als Spiel. Fehlt ein Vorrundenspiel, der Spieler steht
+    // aber schon fest, bekommt er einen Kasten „Freilos“ in der Runde davor.
+    function byes(m, d) {
+      if (d >= depth) return [null, null];
+      return kids(m).map(function (c, k) {
+        var side = k ? 'away' : 'home';
+        return !c && (m[side] || []).some(Boolean) ? { side: side, m: m, planning: k ? m.from2 : m.from1 } : null;
+      });
+    }
+    // Höhe = Anzahl der Kästen in der vordersten Spalte ihres Zweigs (keine Lücken)
     var leaves = 0;
-    (function count(m) { var ks = kids(m).filter(Boolean); if (!ks.length) leaves++; ks.forEach(count); })(root);
+    (function count(m, d) {
+      var ks = kids(m);
+      var bs = byes(m, d);
+      var n = 0;
+      ks.forEach(function (c, k) { if (c) { n++; count(c, d + 1); } else if (bs[k]) { n++; leaves++; } });
+      if (!n) leaves++;
+    })(root, 0);
     var height = leaves * unit;
     var slot = 0;
     var width = (depth + 1) * COL_W + depth * COL_GAP;
@@ -190,8 +205,20 @@
       var x = col * (COL_W + COL_GAP);
       if (!rounds[col]) rounds[col] = m.round;
       var ks = kids(m);
-      // erst die Vorrunden setzen, das Spiel dann mittig dazwischen
-      var cys = ks.map(function (c) { return c ? place(c, d + 1) : null; });
+      var bs = byes(m, d);
+      // erst die Vorrunden (und Freilose) setzen, das Spiel dann mittig dazwischen
+      var cys = ks.map(function (c, k) {
+        if (c) return place(c, d + 1);
+        if (!bs[k]) return null;
+        var by = top + (slot++ + 0.5) * unit;
+        var bx = byeBox(bs[k].m, bs[k].side, byeNum(bs[k].planning));
+        bx.style.left = (x - COL_W - COL_GAP) + 'px';
+        bx.style.top = (by - BOX_H / 2) + 'px';
+        bx.style.width = COL_W + 'px';
+        bx.style.height = BOX_H + 'px';
+        b.appendChild(bx);
+        return by;
+      });
       var known = cys.filter(function (y) { return y != null; });
       var cy = known.length ? known.reduce(function (a, b) { return a + b; }, 0) / known.length : top + (slot++ + 0.5) * unit;
       var ph = ks.map(function (c) { return c && c.num ? 'Sieger Spiel ' + c.num : null; });
@@ -202,7 +229,7 @@
       box.style.height = BOX_H + 'px';
       b.appendChild(box);
       ks.forEach(function (c, k) {
-        if (!c) return;
+        if (!c && !bs[k]) return;
         var ccy = cys[k];
         var x1 = x - COL_GAP;
         var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -223,6 +250,47 @@
     scroller.appendChild(b);
     wrap.appendChild(scroller);
     return wrap;
+  }
+
+  // Spielnummer eines Freiloses: BTP nummeriert die Freilose mit; in einer Runde liegen
+  // Spielnummer und Planungsnummer im gleichen Abstand – den nehmen wir von den echten Spielen
+  var offsets = null;
+  function byeNum(planning) {
+    var p = Number(planning);
+    if (!offsets || !Number.isFinite(p)) return null;
+    var base = Math.floor(p / 1000);
+    var off = offsets[base];
+    return off != null ? p + off : null;
+  }
+  function computeOffsets(d) {
+    var seen = {};
+    d.matches.forEach(function (m) {
+      var p = Number(m.planning), n = Number(m.num);
+      if (!Number.isFinite(p) || !Number.isFinite(n)) return;
+      var base = Math.floor(p / 1000);
+      var off = n - p;
+      if (seen[base] === undefined) seen[base] = off;
+      else if (seen[base] !== off) seen[base] = null;   // nicht einheitlich → keine Nummer
+    });
+    offsets = seen;
+  }
+
+  // Kasten für ein Freilos: Spieler kommt ohne Spiel in die nächste Runde
+  function byeBox(m, side, num) {
+    var box = el('div', 'bm bye' + (Follow.involves({ home: m[side], away: [], homeClubs: [], awayClubs: [] }) ? ' followed' : ''));
+    var head = el('div', 'bm-head');
+    head.appendChild(el('span', null, num ? 'Spiel ' + num + ' · Freilos' : 'Freilos'));
+    box.appendChild(head);
+    var row = el('div', 'bm-team');
+    var who = el('span', 'bm-names');
+    BL.players(m[side], true).forEach(function (n, i) {
+      if (i) who.appendChild(document.createTextNode(' / '));
+      who.appendChild(Follow.nameEl('span', null, (m[side] || []).filter(Boolean)[i], n));
+    });
+    row.appendChild(who);
+    box.appendChild(row);
+    box.appendChild(el('div', 'bm-team muted', 'Freilos'));
+    return box;
   }
 
   function roundName(r) {
@@ -317,6 +385,7 @@
     if (isGroup(d)) out.appendChild(group(d));
     else {
       var tr = tree(d);
+      computeOffsets(d);
       tr.roots.forEach(function (r, i) {
         out.appendChild(bracket(r, tr.kids, i === 0 ? null : (roundName(r.round) || 'Weitere Spiele')));
       });
