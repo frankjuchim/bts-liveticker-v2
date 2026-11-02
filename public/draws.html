@@ -43,7 +43,7 @@
   var data = null;           // { version, draws }
   var loading = null;
   var current = BL.params.get('d') || '';
-  var BOX_H = 56;            // Höhe eines Spiels im Baum (px)
+  var BOX_H = 60;            // Höhe eines Spiels im Baum (px)
   var GAP = 8;               // Abstand zwischen zwei Spielen der ersten Runde
   var COL_W = 230;           // Breite einer Runde
   var COL_GAP = 34;          // Abstand zwischen den Runden (Verbindungslinien)
@@ -187,8 +187,12 @@
     });
     row.appendChild(who);
     var sc = el('span', 'bm-sets');
-    (m.sets || []).forEach(function (s) {
-      sc.appendChild(el('span', (side === 'home' ? s.home > s.away : s.away > s.home) ? 'w' : '', String(s[side])));
+    var sets = m.sets || [];
+    sets.forEach(function (s, i) {
+      // gewonnen nur, wenn der Satz entschieden ist (laufender Satz wird nicht hervorgehoben)
+      var decided = s.winner !== undefined ? !!s.winner : (i < sets.length - 1 || !!m.winner);
+      var won = s.winner ? s.winner === side : decided && (side === 'home' ? s.home > s.away : s.away > s.home);
+      sc.appendChild(el('span', (won ? 'w' : '') + (!decided ? ' cur' : ''), String(s[side])));
     });
     row.appendChild(sc);
     return row;

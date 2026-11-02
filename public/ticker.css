@@ -384,7 +384,13 @@ a.court:hover { text-decoration: underline; }
 .bm-team { display: flex; justify-content: space-between; gap: 6px; line-height: 1.35; }
 .bm-team.won { font-weight: 700; }
 .bm-names { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.bm-sets { display: flex; gap: 5px; font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 400; flex: none; }
+.bm-sets { display: flex; gap: 0; font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 400; flex: none; }
+/* feste, hinterlegte Spalten je Satz – die Zahlen beider Teams stehen genau untereinander */
+.bm-sets { gap: 3px; }
+.bm-sets span { width: 2em; text-align: center; background: var(--bg); border-radius: 4px; }
+.bm-sets span.w { background: color-mix(in srgb, var(--club) 14%, var(--bg)); }
+.bm-sets span.cur { background: var(--club); color: #fff; font-weight: 700; }   /* laufender Satz */
+.bm-team + .bm-team { margin-top: 2px; }
 .bm-sets .w { color: var(--text); font-weight: 700; }
 .group-table { border-collapse: collapse; width: 100%; font-size: 0.9rem; background: var(--card); border-radius: 10px; overflow: hidden; }
 .group-table th, .group-table td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
