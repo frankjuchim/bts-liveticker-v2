@@ -448,3 +448,18 @@ a.pl-link:hover { text-decoration: underline; }
 .pl-name { margin: 0; font-size: 1.35rem; text-transform: none; letter-spacing: 0; color: var(--text); display: flex; align-items: center; gap: 8px; }
 .pl-name .flag { height: 0.85em; margin: 0; }
 .pl-h3 { font-size: 0.95rem; margin: 22px 0 8px; }
+
+/* Handy-Seite: Anzeigetafel je Court */
+.app-board { padding: 6px 0 0 10px; overflow: hidden; }
+.app-board .app-top { padding-right: 10px; margin-bottom: 2px; }
+.ab-team { display: flex; align-items: center; gap: 0; min-height: 1.9em; }
+.ab-team + .ab-team { border-top: 1px solid var(--line); }
+.ab-team.won .ab-names { font-weight: 700; }
+.ab-names { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 6px; }
+.ab-set { width: 1.9em; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.9rem; }
+.ab-set.w { color: var(--text); font-weight: 700; }
+.ab-pts { width: 2.3em; text-align: center; align-self: stretch; display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 1.15rem; font-variant-numeric: tabular-nums; background: var(--club); color: #fff; }
+.ab-srv::before { content: ""; display: inline-block; width: 0.42em; height: 0.42em; border-radius: 50%; background: currentColor; margin: 0 0.35em 0.1em 0; vertical-align: middle; }
+.ab-srv-team::after { content: " 🏸"; font-size: 0.8em; }
+.app-board .ab-team:last-child { padding-bottom: 0; }

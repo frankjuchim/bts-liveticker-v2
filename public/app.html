@@ -206,6 +206,41 @@
     return r;
   }
 
+  // Anzeigetafel: je Team eine Zeile – Namen, Sätze in Spalten, laufender Punktestand groß
+  function board(m, tag, tagCls) {
+    var r = el('div', 'app-item app-board' + (Follow.involves(m) ? ' followed' : ''));
+    var top = el('div', 'app-top');
+    if (tag) top.appendChild(el('span', 'badge ' + (tagCls || ''), tag));
+    top.appendChild(el('span', 'muted app-small', m.name));
+    r.appendChild(top);
+    var split = BL.splitSets(m);
+    var flags = Nations.useful(last) && !(last.display && last.display.flagsCards === false);
+    ['home', 'away'].forEach(function (side) {
+      var line = el('div', 'ab-team' + (m.winner === side ? ' won' : ''));
+      var who = el('div', 'ab-names');
+      var list = (m[side] || []).filter(Boolean);
+      if (!list.length) who.appendChild(el('span', 'muted', 'N. N.'));
+      list.forEach(function (full, i) {
+        if (i) who.appendChild(document.createTextNode(' / '));
+        var span = Follow.nameEl('span', null, full, BL.shortName(full));
+        var idx = (m[side] || []).indexOf(full);
+        var f = flags && Nations.flag(((side === 'home' ? m.homeNations : m.awayNations) || [])[idx]);
+        if (f) span.insertBefore(f, span.firstChild);
+        if (m.service && m.service.server.side === side && m.service.server.player === idx) span.classList.add('ab-srv');
+        who.appendChild(span);
+      });
+      if (m.service && m.service.server.side === side && m.service.server.player == null && list.length > 1) who.classList.add('ab-srv-team');
+      line.appendChild(who);
+      split.done.forEach(function (x) {
+        line.appendChild(el('span', 'ab-set' + (x.winner === side ? ' w' : ''), String(x[side])));
+      });
+      if (split.current) line.appendChild(el('span', 'ab-pts', String(split.current[side])));
+      else if (m.status === 'called') line.appendChild(el('span', 'ab-pts muted', '–'));
+      r.appendChild(line);
+    });
+    return r;
+  }
+
   function score(m) {
     var split = BL.splitSets(m);
     var s = split.done.map(function (x) { return x.home + ':' + x.away; });
@@ -256,14 +291,14 @@
     var mine = [];
     all.forEach(function (m) {
       if (!Follow.involves(m)) return;
-      if (m.status === 'live' || m.status === 'called') mine.push({ k: 0, el: row(m, 'Court ' + m.court, m.status === 'live' ? 'live' : 'called', score(m)) });
+      if (m.status === 'live' || m.status === 'called') mine.push({ k: 0, el: board(m, 'Court ' + m.court, m.status === 'live' ? 'live' : 'called') });
     });
     ((state && state.upcoming) || []).forEach(function (u) {
       if (Follow.involves(u)) mine.push({ k: u.state === 'preparation' ? 1 : 2, el: row(u, u.state === 'preparation' ? 'Gleich' : null, 'called', eta(u)) });
     });
     all.filter(function (m) { return Follow.involves(m) && m.status === 'finished'; })
       .sort(function (a, b) { return (b.finishedAt || '').localeCompare(a.finishedAt || ''); }).slice(0, 3)
-      .forEach(function (m) { mine.push({ k: 3, el: row(m, 'Ergebnis', 'done', score(m)) }); });
+      .forEach(function (m) { mine.push({ k: 3, el: board(m, 'Ergebnis', 'done') }); });
     mine.sort(function (a, b) { return a.k - b.k; }).forEach(function (x) { fl.appendChild(x.el); });
     if (!Follow.list().length && !Follow.clubs().length) fl.appendChild(el('p', 'muted app-small', 'Namen antippen oder oben eintragen, um Spielern zu folgen.'));
     else if (!mine.length) fl.appendChild(el('p', 'muted app-small', 'Gerade keine Spiele deiner Spieler.'));
@@ -274,7 +309,7 @@
     ((state && state.courts) || []).forEach(function (c) {
       var m = BL.match(state, c.match);
       if (!m) return;
-      var r = row(m, 'Court ' + c.num, m.status === 'live' ? 'live' : 'called', score(m));
+      var r = board(m, 'Court ' + c.num, m.status === 'live' ? 'live' : (m.status === 'called' ? 'called' : 'done'));
       cs.appendChild(r);
     });
     if (!cs.children.length) cs.appendChild(el('p', 'muted app-small', 'Gerade läuft kein Spiel.'));
