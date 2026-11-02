@@ -398,13 +398,7 @@ a.court:hover { text-decoration: underline; }
 .stat-export button:hover { border-color: var(--club); }
 .stat-table h3 { font-size: 0.95rem; margin: 22px 0 8px; }
 .stat-table td:nth-child(n+3) { font-variant-numeric: tabular-nums; }
-.print-bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 4px 0 14px; padding: 10px 12px;
-  background: var(--card); border-radius: 10px; font-size: 0.85rem; }
-.print-bar button { font: inherit; font-weight: 700; padding: 7px 14px; border: 0; border-radius: 8px; background: var(--club); color: #fff; cursor: pointer; }
-/* Druckansicht auch am Bildschirm: nur die Statistik */
-body.print-view .tabs, body.print-view .stat-export, body.print-view .foot, body.print-view .pl-sched, body.print-view .back { display: none !important; }
 @media print {
-  .print-bar { display: none !important; }
   body { background: #fff; }
   .tabs, .stat-export, .foot, .pl-sched, .brand img, .back, .toasts { display: none !important; }
   .stat, .group-table { box-shadow: none; border: 1px solid #ccc; }
