@@ -405,8 +405,6 @@
       tiles.push({ big: String(ext.length), label: 'Verlängerte Sätze', sub: 'über 21 Punkte (von ' + allSets.length + ' Sätzen)' });
       var bestSet = allSets.slice().sort(function (a, b) { return (b.s.home + b.s.away) - (a.s.home + a.s.away); })[0];
       if (bestSet) tiles.push({ big: bestSet.s.home + ':' + bestSet.s.away, label: 'Längster Satz', sub: desc(bestSet.m) });
-      var clear = allSets.slice().sort(function (a, b) { return Math.abs(b.s.home - b.s.away) - Math.abs(a.s.home - a.s.away); })[0];
-      if (clear) tiles.push({ big: Math.max(clear.s.home, clear.s.away) + ':' + Math.min(clear.s.home, clear.s.away), label: 'Deutlichster Satz', sub: desc(clear.m) });
     }
     var plist = Object.keys(st.players).map(function (n) { return st.players[n]; });
     var top = plist.filter(function (p) { return p.wins; }).sort(function (a, b) { return b.wins - a.wins || a.losses - b.losses; })[0];
