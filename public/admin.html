@@ -424,6 +424,7 @@
     }
     ul.appendChild(link('/?view=field', 'Liveticker in der Spielfeld-Ansicht'));
     ul.appendChild(link('/felder?cols=' + Math.min(3, Math.max(1, courts.length)), 'Alle Courts als Spielfeld (Spalten über ?cols=…, z. B. für einen Hallenbildschirm)'));
+    ul.appendChild(link('/halle', 'Hallenbildschirm: wechselt selbst zwischen Courts, Als Nächstes und Ergebnissen (?dauer=15, ?seiten=courts,next,results, ?ansicht=feld)'));
     ul.appendChild(link('/spieler', 'Spieler-Seite: Meine Spieler, alle Spieler, Vereine, Statistik'));
     ul.appendChild(link('/baum', 'Turnierbäume und Gruppen (BTS-Erweiterung v3), einzelnes Feld: /baum?d=<Feld>'));
     ul.appendChild(link('/ergebnis', 'Overlay: Ergebnis-Einblendung bei Spielende (Test: /ergebnis?test=1)'));

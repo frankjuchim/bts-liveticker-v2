@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hallenbildschirm</title>
+<link rel="stylesheet" href="/ticker.css">
+<link rel="stylesheet" href="/config.css">
+<link rel="icon" href="{{LOGO}}">
+<style>
+  /* Hallenbildschirm: füllt den Bildschirm, wechselt selbst zwischen den Ansichten */
+  html, body { height: 100%; }
+  body { margin: 0; background: #0e141b; color: #fff; overflow: hidden; font-size: clamp(14px, 1.45vw, 30px); }
+  .h-top { display: flex; align-items: center; gap: 1em; padding: 0.6em 1.2em; background: var(--club); }
+  .h-top img { height: 2.2em; max-width: 6em; object-fit: contain; }
+  .h-top .h-title { flex: 1; min-width: 0; }
+  .h-top b { display: block; font-size: 1.25em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .h-top span { opacity: 0.85; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.06em; }
+  .h-clock { font-size: 1.6em; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .h-top .sched-chip { font-size: 0.8em; }
+  .h-progress { height: 0.25em; background: rgba(255,255,255,0.12); }
+  .h-progress i { display: block; height: 100%; width: 0; background: #ffd84d; }
+  .h-progress i.run { animation: h-run linear forwards; }
+  @keyframes h-run { from { width: 0; } to { width: 100%; } }
+  .h-tabs { display: flex; gap: 0.5em; padding: 0.5em 1.2em 0; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.08em; }
+  .h-tabs span { opacity: 0.45; }
+  .h-tabs span.on { opacity: 1; font-weight: 800; border-bottom: 0.15em solid #ffd84d; }
+  .h-stage { padding: 0.8em 1.2em; height: calc(100% - 7.2em); box-sizing: border-box; overflow: hidden; }
+  .h-panel { animation: h-in 0.5s ease-out; height: 100%; }
+  @keyframes h-in { from { opacity: 0; transform: translateY(0.6em); } to { opacity: 1; transform: none; } }
+  .h-grid { display: grid; gap: 0.8em; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); align-content: start; }
+  .h-court { background: rgba(255,255,255,0.07); border-radius: 0.6em; overflow: hidden; }
+  .h-court-head { display: flex; gap: 0.6em; align-items: center; padding: 0.35em 0.7em; background: rgba(0,0,0,0.3); font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; }
+  .h-court-head b { font-size: 1.1em; }
+  .h-court-head .badge { margin-left: auto; }
+  .h-team { display: flex; align-items: center; gap: 0.6em; padding: 0.35em 0.7em; border-top: 1px solid rgba(255,255,255,0.08); }
+  .h-names { flex: 1; min-width: 0; line-height: 1.25; }
+  .h-names div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .h-names .club { display: block; font-size: 0.7em; opacity: 0.6; }
+  .h-sets { opacity: 0.6; font-variant-numeric: tabular-nums; }
+  .h-sets b { opacity: 1; color: #fff; }
+  .h-pts { min-width: 1.8em; text-align: center; font-size: 1.7em; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .h-srv::before { content: ""; display: inline-block; width: 0.45em; height: 0.45em; border-radius: 50%; background: #ffd84d; margin-right: 0.35em; vertical-align: middle; }
+  .h-free { opacity: 0.5; padding: 0.8em 0.7em; }
+  .h-list { display: flex; flex-direction: column; gap: 0.4em; }
+  .h-row { display: grid; grid-template-columns: 6.5em 1fr auto; gap: 1em; align-items: center; background: rgba(255,255,255,0.06); border-radius: 0.5em; padding: 0.45em 0.8em; }
+  .h-when { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .h-when small { display: block; font-weight: 400; font-size: 0.7em; opacity: 0.6; }
+  .h-disc { font-size: 0.75em; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.04em; }
+  .h-res { font-weight: 800; font-variant-numeric: tabular-nums; text-align: right; }
+  .h-res small { display: block; font-weight: 400; opacity: 0.6; font-size: 0.75em; }
+  .h-win { font-weight: 700; }
+  .h-empty { opacity: 0.6; font-size: 1.2em; padding: 2em 0; text-align: center; }
+  .h-note { font-size: 0.7em; opacity: 0.55; margin-top: 0.6em; }
+  .flag { height: 0.8em; }
+  .field-card { font-size: 0.8em; }
+</style>
+</head>
+<body>
+<div class="h-top">
+  <img src="{{LOGO}}" alt="" data-brand-logo>
+  <div class="h-title"><b id="tName">{{TITLE}}</b><span data-brand="subtitle">{{SUBTITLE}}</span></div>
+  <span class="sched-chip" id="delay" hidden></span>
+  <div class="h-clock" id="clock"></div>
+</div>
+<div class="h-progress"><i id="bar"></i></div>
+<div class="h-tabs" id="tabs"></div>
+<div class="h-stage" id="stage"></div>
+
+<script src="/live.js"></script>
+<script src="/schedule.js"></script>
+<script src="/nations.js"></script>
+<script src="/field.js"></script>
+<script>
+// Hallenbildschirm /halle: wechselt automatisch zwischen Courts, „Als Nächstes“ und Ergebnissen.
+//   ?dauer=15            Sekunden je Ansicht (Standard 15)
+//   ?seiten=courts,next,results   welche Ansichten in welcher Reihenfolge
+//   ?ansicht=feld        Courts als Spielfelder statt Karten
+//   ?cols=3              Spalten für die Courts (Standard: passend zur Anzahl)
+//   ?c=1,2,3             nur diese Courts · ?anzahl=8 Zeilen bei Listen · ?bg=… Hintergrund
+(function () {
+  'use strict';
+  BL.applyCommonParams();
+  var p = BL.params;
+  var el = BL.el;
+  var secs = Math.max(5, parseFloat(p.get('dauer')) || 15);
+  var pages = (p.get('seiten') || 'courts,next,results').split(',').map(function (x) { return x.trim(); })
+    .filter(function (x) { return ['courts', 'next', 'results'].indexOf(x) >= 0; });
+  if (!pages.length) pages = ['courts'];
+  var field = p.get('ansicht') === 'feld';
+  var only = (p.get('c') || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+  var rows = Math.max(3, parseInt(p.get('anzahl'), 10) || 8);
+  var NAMES = { courts: 'Courts', next: 'Als Nächstes', results: 'Ergebnisse' };
+  var stage = document.getElementById('stage');
+  var state = null;
+  var idx = 0;
+  var timer = null;
+
+  function flagsOn(key) { return !(state && state.display && state.display[key] === false) && Nations.useful(state); }
+  function nameLine(m, side) {
+    var d = el('div');
+    var list = (m[side] || []).filter(Boolean);
+    if (!list.length) d.textContent = 'N. N.';
+    var flags = flagsOn('flagsCards');
+    list.forEach(function (n, i) {
+      if (i) d.appendChild(document.createTextNode(' / '));
+      var s = el('span', m.service && m.service.server.side === side && m.service.server.player === (m[side] || []).indexOf(n) ? 'h-srv' : '', n);
+      var f = flags && Nations.flag(((side === 'home' ? m.homeNations : m.awayNations) || [])[(m[side] || []).indexOf(n)]);
+      if (f) s.insertBefore(f, s.firstChild);
+      d.appendChild(s);
+    });
+    return d;
+  }
+
+  function courts() {
+    var list = (state && state.courts) || [];
+    if (only.length) list = only.map(function (n) { return BL.court(state, n); }).filter(Boolean);
+    var cols = parseInt(p.get('cols'), 10) || (list.length <= 2 ? list.length || 1 : list.length <= 4 ? 2 : list.length <= 9 ? 3 : 4);
+    var g = el('div', 'h-grid');
+    g.style.setProperty('--cols', cols);
+    list.forEach(function (c) {
+      var m = BL.courtMatch(state, c, 5);
+      if (field && m && state.btsExtension) { g.appendChild(Field.render(m, { court: c.num, short: false, flags: flagsOn('flagsField') })); return; }
+      var card = el('div', 'h-court');
+      var head = el('div', 'h-court-head');
+      head.appendChild(el('b', null, 'Court ' + c.num));
+      if (m) head.appendChild(el('span', null, m.name));
+      if (m) head.appendChild(el('span', 'badge ' + (m.status === 'live' ? 'live' : m.status === 'called' ? 'called' : 'done'), m.status === 'live' ? 'Live' : m.status === 'called' ? 'Aufruf' : 'Beendet'));
+      card.appendChild(head);
+      if (!m) { card.appendChild(el('div', 'h-free', 'frei')); g.appendChild(card); return; }
+      var split = BL.splitSets(m);
+      ['home', 'away'].forEach(function (side) {
+        var t = el('div', 'h-team');
+        var nm = el('div', 'h-names');
+        nm.appendChild(nameLine(m, side));
+        var cl = BL.el('span', 'club', ((side === 'home' ? m.homeClubs : m.awayClubs) || []).filter(function (x, i, a) { return x && a.indexOf(x) === i; }).join(' / '));
+        if (cl.textContent) nm.appendChild(cl);
+        t.appendChild(nm);
+        var sets = el('span', 'h-sets');
+        split.done.forEach(function (s) { var v = el(s.winner === side ? 'b' : 'span', null, String(s[side]) + ' '); sets.appendChild(v); });
+        t.appendChild(sets);
+        t.appendChild(el('span', 'h-pts', split.current ? String(split.current[side]) : (m.winner === side ? '✓' : '')));
+        card.appendChild(t);
+      });
+      g.appendChild(card);
+    });
+    if (!list.length) return el('div', 'h-empty', 'Keine Courts');
+    return g;
+  }
+
+  function vs(m) {
+    var d = el('div');
+    d.appendChild(el('div', 'h-disc', m.name + (m.num ? ' · Spiel ' + m.num : '')));
+    var line = el('div');
+    line.appendChild(nameLine(m, 'home'));
+    line.lastChild.style.display = 'inline';
+    line.appendChild(document.createTextNode('  –  '));
+    line.appendChild(nameLine(m, 'away'));
+    line.lastChild.style.display = 'inline';
+    d.appendChild(line);
+    return d;
+  }
+
+  function next() {
+    var sched = Schedule.compute(state);
+    var up = ((state && state.upcoming) || []).slice(0, rows);
+    if (!up.length) return el('div', 'h-empty', 'Keine angesetzten Spiele');
+    var box = el('div');
+    var list = el('div', 'h-list');
+    up.forEach(function (u) {
+      var r = el('div', 'h-row');
+      var eta = sched.eta[u.id];
+      var w = el('div', 'h-when', eta ? 'ca. ' + Schedule.clock(eta) : (u.time || ''));
+      if (u.state === 'preparation') w.appendChild(el('small', null, 'gleich dran'));
+      else if (eta && u.time) w.appendChild(el('small', null, 'Plan ' + u.time));
+      r.appendChild(w);
+      r.appendChild(vs(u));
+      r.appendChild(el('div'));
+      list.appendChild(r);
+    });
+    box.appendChild(list);
+    if (Object.keys(sched.eta).length) box.appendChild(el('div', 'h-note', 'Zeiten mit „ca.“ sind unverbindliche Schätzungen – maßgeblich ist der Aufruf der Turnierleitung.'));
+    return box;
+  }
+
+  function results() {
+    var done = ((state && state.matches) || []).filter(function (m) { return m.status === 'finished' && m.winner && m.source !== 'bts'; })
+      .sort(function (a, b) { return (b.finishedAt || '').localeCompare(a.finishedAt || ''); }).slice(0, rows);
+    if (!done.length) return el('div', 'h-empty', 'Noch keine Ergebnisse');
+    var list = el('div', 'h-list');
+    done.forEach(function (m) {
+      var r = el('div', 'h-row');
+      r.appendChild(el('div', 'h-when', BL.time(m.finishedAt)));
+      var d = vs(m);
+      d.lastChild.childNodes[m.winner === 'home' ? 0 : 2].classList.add('h-win');
+      r.appendChild(d);
+      var res = el('div', 'h-res', m.setsWon[0] + ':' + m.setsWon[1]);
+      res.appendChild(el('small', null, m.sets.map(function (s) { return s.home + ':' + s.away; }).join('  ')));
+      r.appendChild(res);
+      list.appendChild(r);
+    });
+    return list;
+  }
+
+  function show(animate) {
+    var page = pages[idx % pages.length];
+    var tabs = document.getElementById('tabs');
+    tabs.replaceChildren();
+    if (pages.length > 1) pages.forEach(function (x, i) { tabs.appendChild(el('span', i === idx % pages.length ? 'on' : '', NAMES[x])); });
+    var panel = el('div', animate ? 'h-panel' : '');
+    panel.appendChild(page === 'courts' ? courts() : page === 'next' ? next() : results());
+    stage.replaceChildren(panel);
+  }
+
+  function rotate() {
+    if (pages.length < 2) return;
+    idx = (idx + 1) % pages.length;
+    show(true);
+    restartBar();
+  }
+  function restartBar() {
+    var bar = document.getElementById('bar');
+    bar.classList.remove('run');
+    void bar.offsetWidth;
+    if (pages.length < 2) return;
+    bar.style.animationDuration = secs + 's';
+    bar.classList.add('run');
+  }
+
+  function tick() {
+    var d = new Date();
+    document.getElementById('clock').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  tick();
+  setInterval(tick, 10000);
+
+  BL.connect(function (st) {
+    var first = !state;
+    state = st;
+    var t = (st && st.tournament) || {};
+    if (t.name) document.getElementById('tName').textContent = t.name;
+    var sched = Schedule.compute(st);
+    var dly = document.getElementById('delay');
+    dly.hidden = sched.delay == null;
+    if (!dly.hidden) { dly.className = 'sched-chip ' + Schedule.level(sched.delay); dly.textContent = Schedule.delayText(sched.delay).replace(/^ca\. /, ''); }
+    show(first);
+    if (first) { restartBar(); timer = setInterval(rotate, secs * 1000); }
+  });
+  void timer;
+})();
+</script>
+</body>
+</html>

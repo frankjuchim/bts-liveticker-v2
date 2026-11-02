@@ -298,6 +298,7 @@ zusehen, braucht es eine öffentliche Adresse mit HTTPS, z. B.:
 | `/court/<nr>` | Overlay für einen Court (transparenter Hintergrund) |
 | `/courts` | Overlay mehrerer Courts (Standard: alle belegten untereinander) |
 | `/?view=field` | Liveticker in der **Spielfeld-Ansicht** (wie in bup, umschaltbar auf der Seite) |
+| `/halle` | **Hallenbildschirm**: wechselt selbst zwischen Courts, „Als Nächstes“ und Ergebnissen; `?dauer=15` Sekunden je Ansicht, `?seiten=courts,next,results`, `?ansicht=feld` Courts als Spielfelder, `?cols=3`, `?c=1,2`, `?anzahl=8` |
 | `/app` | **Handy-Seite** zum Hinzufügen auf den Startbildschirm: Meine Spieler, Courts, Als Nächstes und **Push-Benachrichtigungen** (Aufruf, gleich dran, Ergebnis) – auch bei geschlossener Seite; braucht HTTPS, auf dem iPhone erst „Zum Home-Bildschirm“ |
 | `/spieler` | **Meine Spieler**, alle Spieler, Vereine, Statistik mit Tabellen nach Disziplin, Spieler, Verein und Court; **Export** als CSV (Excel), JSON oder Druck/PDF (nach dem Vorbild des EM-Tickers) |
 | `/baum` | **Turnierbäume** aller Felder (KO-Baum mit Ergebnissen, live markiert; Gruppen als Tabelle), `?d=<Feld>` ein Feld – braucht BTS-Erweiterung v3 |

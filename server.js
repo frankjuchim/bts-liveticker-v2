@@ -318,6 +318,7 @@ function serveStatic(req, res, pathname) {
   if (clean === '/spieler') file = 'players.html';
   if (clean === '/baum') file = 'draws.html';
   if (clean === '/app') file = 'app.html';
+  if (clean === '/halle') file = 'hall.html';
   if (clean === '/felder') file = 'fields.html';
   if (!file) file = clean.replace(/^\/+/, '');
   serveFile(res, file);
