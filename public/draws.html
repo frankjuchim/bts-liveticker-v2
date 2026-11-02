@@ -79,22 +79,40 @@
   }
 
   // ---- Auswahl der Felder, nach Disziplin gruppiert
+  // Konkurrenz eines Felds: BTS hängt bei Gruppen den Feldnamen an („DD A - Gruppe 1“ → „DD A“)
+  function competition(d) {
+    var ev = d.event || d.name;
+    var suffix = ' - ' + d.name;
+    return ev.length > suffix.length && ev.slice(-suffix.length) === suffix ? ev.slice(0, -suffix.length) : ev;
+  }
+  // Beschriftung eines Felds innerhalb der Konkurrenz
+  function drawLabel(d, comp) {
+    var l = d.name.replace(comp, '').replace(/^\s*-\s*|\s*-\s*$/g, '').trim();
+    if (!l || l === comp) l = isGroup(d) ? 'Gruppe' : 'Hauptfeld';
+    if (isGroup(d)) l = l.replace(/^Hauptfeld\s+/, '');   // „Hauptfeld Gruppe 1“ → „Gruppe 1“
+    return l;
+  }
+
+  // ---- Auswahl der Felder: je Konkurrenz eine Zeile – erst die Gruppen, dann das Hauptfeld
   function renderPick() {
     var pick = document.getElementById('pick');
     pick.replaceChildren();
-    var byEvent = {};
+    var byComp = {};
     var order = [];
     data.draws.forEach(function (d) {
-      var ev = d.event || d.name;
-      if (!byEvent[ev]) { byEvent[ev] = []; order.push(ev); }
-      byEvent[ev].push(d);
+      var comp = competition(d);
+      if (!byComp[comp]) { byComp[comp] = []; order.push(comp); }
+      byComp[comp].push(d);
     });
-    order.forEach(function (ev) {
+    order.forEach(function (comp) {
       var row = el('div', 'pick-row');
-      row.appendChild(el('span', 'pick-ev', ev));
-      byEvent[ev].forEach(function (d) {
-        var label = d.name === ev ? (isGroup(d) ? 'Gruppe' : 'Hauptfeld') : d.name.replace(ev, '').replace(/^\s*-\s*/, '') || d.name;
-        var a = el('a', 'chip-btn' + (d.id === current ? ' on' : '') + (involves(d) ? ' followed' : ''), label);
+      row.appendChild(el('span', 'pick-ev', comp));
+      var chips = el('div', 'pick-chips');
+      byComp[comp].slice().sort(function (a, b) {
+        var ga = isGroup(a) ? 0 : 1, gb = isGroup(b) ? 0 : 1;
+        return ga - gb || drawLabel(a, comp).localeCompare(drawLabel(b, comp), 'de', { numeric: true });
+      }).forEach(function (d) {
+        var a = el('a', 'chip-btn' + (d.id === current ? ' on' : '') + (involves(d) ? ' followed' : ''), drawLabel(d, comp));
         a.href = '?d=' + encodeURIComponent(d.id);
         a.addEventListener('click', function (e) {
           e.preventDefault();
@@ -102,11 +120,13 @@
           history.replaceState(null, '', '?d=' + encodeURIComponent(d.id));
           render();
         });
-        row.appendChild(a);
+        chips.appendChild(a);
       });
+      row.appendChild(chips);
       pick.appendChild(row);
     });
   }
+
 
   function involves(d) {
     return d.matches.some(function (m) { return Follow.involves(m); });
@@ -412,7 +432,7 @@
     flagsOn = flagsUseful();
     var d = data.draws.filter(function (x) { return x.id === current; })[0];
     var out = el('div');
-    out.appendChild(el('h2', null, d.name + (d.stage && d.name.indexOf(d.stage) < 0 ? ' · ' + d.stage : '')));
+    out.appendChild(el('h2', null, competition(d) + ' · ' + drawLabel(d, competition(d))));
     if (isGroup(d)) out.appendChild(group(d));
     else {
       var tr = tree(d);

@@ -358,8 +358,9 @@ a.court:hover { text-decoration: underline; }
 
 /* Turnierbäume (/baum) */
 .draw-pick { display: flex; flex-direction: column; gap: 6px; margin: 14px 0 4px; }
-.pick-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.pick-ev { font-weight: 700; min-width: 7em; font-size: 0.9rem; }
+.pick-row { display: flex; gap: 6px 10px; align-items: baseline; }
+.pick-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.pick-ev { font-weight: 700; min-width: 5.5em; flex: none; font-size: 0.9rem; }
 .chip-btn { font-size: 0.85rem; padding: 3px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--card);
   color: var(--text); text-decoration: none; white-space: nowrap; }
 .chip-btn.on { background: var(--club); border-color: var(--club); color: #fff; }
