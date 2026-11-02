@@ -47,7 +47,17 @@
   </section>
 
   <section data-panel="statistik" hidden>
+    <div class="stat-export" id="statExport">
+      <span class="muted">Export:</span>
+      <button type="button" data-export="matches">Spiele (CSV)</button>
+      <button type="button" data-export="players">Spieler (CSV)</button>
+      <button type="button" data-export="clubs">Vereine (CSV)</button>
+      <button type="button" data-export="events">Disziplinen (CSV)</button>
+      <button type="button" data-export="json">Alles (JSON)</button>
+      <button type="button" data-export="print">Drucken / PDF</button>
+    </div>
     <div id="statTiles" class="stat-tiles"></div>
+    <div id="statTables"></div>
   </section>
 
   <footer class="foot"><span id="conn" class="conn">Verbinde …</span></footer>
@@ -279,33 +289,134 @@
   var openClubs = {};
 
   // ---- Statistik aus allen beendeten Spielen
-  function renderStats(state, players) {
-    var done = ((state && state.matches) || []).filter(function (m) { return m.status === 'finished'; });
+  // ---- Statistik: Kennzahlen und Tabellen aus den beendeten Spielen (die der Ticker kennt)
+  var ROUND = /\s+(R\d+|VF|HF|Finale|\d+\/\d+|G\d+|Q\d*|Runde \d+)$/i;
+  function eventOf(m) { return (m.name || 'Spiel').replace(ROUND, '') || m.name; }
+  function isDoubles(m) { return m.doubles != null ? m.doubles : (m.home.length > 1 || m.away.length > 1); }
+  function pts(m) { return m.sets.reduce(function (a, s) { return a + s.home + s.away; }, 0); }
+  function desc(m) { return m.name + ': ' + m.home.filter(Boolean).join(' / ') + ' – ' + m.away.filter(Boolean).join(' / '); }
+  function avg(list) { return list.length ? list.reduce(function (a, b) { return a + b; }, 0) / list.length : null; }
+  function pct(a, b) { return b ? Math.round(a / b * 100) + ' %' : '–'; }
+  function clubOf(m, side, i) { return ((side === 'home' ? m.homeClubs : m.awayClubs) || [])[i] || ''; }
+
+  function computeStats(state) {
+    var done = ((state && state.matches) || []).filter(function (m) { return m.status === 'finished' && m.winner; });
+    var st = { done: done, players: {}, clubs: {}, events: {}, courts: {} };
+    done.forEach(function (m) {
+      // Disziplin
+      var ev = eventOf(m);
+      var e = st.events[ev] || (st.events[ev] = { name: ev, matches: 0, durations: [], points: [], three: 0 });
+      e.matches++; e.points.push(pts(m));
+      if (m.duration) e.durations.push(m.duration);
+      if (m.sets.length >= 3) e.three++;
+      // Court
+      if (m.lastCourt) {
+        var c = st.courts[m.lastCourt] || (st.courts[m.lastCourt] = { court: m.lastCourt, matches: 0, time: 0 });
+        c.matches++; c.time += m.duration || 0;
+      }
+      // Spieler und Vereine
+      ['home', 'away'].forEach(function (side) {
+        var won = side === m.winner;
+        var other = side === 'home' ? 'away' : 'home';
+        var sw = 0, sl = 0, pw = 0, pl = 0;
+        m.sets.forEach(function (s) {
+          if (s[side] > s[other]) sw++; else if (s[other] > s[side]) sl++;
+          pw += s[side]; pl += s[other];
+        });
+        var seen = {};
+        (m[side] || []).forEach(function (n, i) {
+          if (!n) return;
+          var club = clubOf(m, side, i);
+          var p = st.players[n] || (st.players[n] = { name: n, club: club, matches: 0, wins: 0, losses: 0, setsW: 0, setsL: 0, ptsW: 0, ptsL: 0, time: 0, events: {} });
+          if (club && !p.club) p.club = club;
+          p.matches++; p[won ? 'wins' : 'losses']++;
+          p.setsW += sw; p.setsL += sl; p.ptsW += pw; p.ptsL += pl; p.time += m.duration || 0;
+          p.events[eventOf(m)] = true;
+          if (club && !seen[club]) {
+            seen[club] = true;
+            var k = st.clubs[club] || (st.clubs[club] = { name: club, players: {}, matches: 0, wins: 0, losses: 0 });
+            k.matches++; k[won ? 'wins' : 'losses']++;
+          }
+          if (club) st.clubs[club].players[n] = true;
+        });
+      });
+    });
+    return st;
+  }
+
+  function table(title, head, rows) {
+    var wrap = el('div', 'stat-table');
+    wrap.appendChild(el('h3', null, title));
+    var sc = el('div', 'table-scroll');
+    var t = el('table', 'group-table');
+    var tr = el('tr');
+    head.forEach(function (h) { tr.appendChild(el('th', null, h)); });
+    t.appendChild(tr);
+    rows.forEach(function (r) {
+      var row = el('tr');
+      r.forEach(function (c, i) {
+        var td = el('td');
+        if (c && c.nodeType) td.appendChild(c); else td.textContent = c == null ? '–' : String(c);
+        row.appendChild(td);
+      });
+      t.appendChild(row);
+    });
+    sc.appendChild(t);
+    wrap.appendChild(sc);
+    return wrap;
+  }
+
+  function renderStats(state) {
+    var st = computeStats(state);
+    var done = st.done;
     var tiles = [];
     var withDur = done.filter(function (m) { return m.duration; });
     var total = withDur.reduce(function (a, m) { return a + m.duration; }, 0);
-    var pts = function (m) { return m.sets.reduce(function (a, s) { return a + s.home + s.away; }, 0); };
-    var desc = function (m) { return m.name + ': ' + m.home.filter(Boolean).join(' / ') + ' – ' + m.away.filter(Boolean).join(' / '); };
-    tiles.push({ big: String(done.length), label: 'Spiele beendet' });
-    if (withDur.length) tiles.push({ big: Follow.duration(total), label: 'Spielzeit insgesamt', sub: 'auf allen Courts zusammen' });
+    var all = (state && state.matches) || [];
+    tiles.push({ big: String(done.length), label: 'Spiele beendet',
+      sub: all.filter(function (m) { return m.status === 'live'; }).length + ' laufen gerade' + ((state && state.upcoming) ? ' · ' + state.upcoming.length + ' angesetzt' : '') });
+    tiles.push({ big: String(Object.keys(st.players).length), label: 'Spieler', sub: Object.keys(st.clubs).length ? Object.keys(st.clubs).length + ' Vereine' : null });
     if (withDur.length) {
+      tiles.push({ big: Follow.duration(total), label: 'Spielzeit insgesamt', sub: 'auf allen Courts zusammen' });
+      var s1 = withDur.filter(function (m) { return !isDoubles(m); }).map(function (m) { return m.duration; });
+      var d1 = withDur.filter(isDoubles).map(function (m) { return m.duration; });
+      tiles.push({ big: Follow.duration(avg(withDur.map(function (m) { return m.duration; }))), label: 'Ø Spieldauer',
+        sub: [s1.length ? 'Einzel ' + Follow.duration(avg(s1)) : '', d1.length ? 'Doppel ' + Follow.duration(avg(d1)) : ''].filter(Boolean).join(' · ') });
       var longest = withDur.slice().sort(function (a, b) { return b.duration - a.duration; })[0];
       tiles.push({ big: Follow.duration(longest.duration), label: 'Längstes Spiel', sub: desc(longest) });
       var shortest = withDur.slice().sort(function (a, b) { return a.duration - b.duration; })[0];
       tiles.push({ big: Follow.duration(shortest.duration), label: 'Kürzestes Spiel', sub: desc(shortest) });
     }
     if (done.length) {
+      tiles.push({ big: String(Math.round(avg(done.map(pts)))), label: 'Ø Punkte je Spiel', sub: done.reduce(function (a, m) { return a + pts(m); }, 0) + ' Punkte insgesamt' });
       var most = done.slice().sort(function (a, b) { return pts(b) - pts(a); })[0];
       tiles.push({ big: String(pts(most)), label: 'Meiste Punkte in einem Spiel', sub: desc(most) });
       var three = done.filter(function (m) { return m.sets.length >= 3; }).length;
-      tiles.push({ big: Math.round(three / done.length * 100) + ' %', label: 'Spiele über drei Sätze', sub: three + ' von ' + done.length });
-      var bestSet = null;
-      done.forEach(function (m) { m.sets.forEach(function (s) { if (!bestSet || s.home + s.away > bestSet.s.home + bestSet.s.away) bestSet = { s: s, m: m }; }); });
+      tiles.push({ big: pct(three, done.length), label: 'Spiele über drei Sätze', sub: three + ' von ' + done.length });
+      // Satz nach Rückstand gedreht: Sieger hat den ersten Satz verloren
+      var comeback = done.filter(function (m) {
+        var f = m.sets[0];
+        return f && (m.winner === 'home' ? f.away > f.home : f.home > f.away);
+      });
+      tiles.push({ big: String(comeback.length), label: 'Gedrehte Spiele', sub: 'Sieg nach verlorenem ersten Satz' });
+      var allSets = [];
+      done.forEach(function (m) { m.sets.forEach(function (s) { allSets.push({ s: s, m: m }); }); });
+      var ext = allSets.filter(function (x) { return Math.max(x.s.home, x.s.away) > 21; });
+      tiles.push({ big: String(ext.length), label: 'Verlängerte Sätze', sub: 'über 21 Punkte (von ' + allSets.length + ' Sätzen)' });
+      var bestSet = allSets.slice().sort(function (a, b) { return (b.s.home + b.s.away) - (a.s.home + a.s.away); })[0];
       if (bestSet) tiles.push({ big: bestSet.s.home + ':' + bestSet.s.away, label: 'Längster Satz', sub: desc(bestSet.m) });
+      var clear = allSets.slice().sort(function (a, b) { return Math.abs(b.s.home - b.s.away) - Math.abs(a.s.home - a.s.away); })[0];
+      if (clear) tiles.push({ big: Math.max(clear.s.home, clear.s.away) + ':' + Math.min(clear.s.home, clear.s.away), label: 'Deutlichster Satz', sub: desc(clear.m) });
     }
-    var top = Object.keys(players).map(function (n) { return players[n]; }).filter(function (p) { return p.wins; })
-      .sort(function (a, b) { return b.wins - a.wins || a.losses - b.losses; })[0];
+    var plist = Object.keys(st.players).map(function (n) { return st.players[n]; });
+    var top = plist.filter(function (p) { return p.wins; }).sort(function (a, b) { return b.wins - a.wins || a.losses - b.losses; })[0];
     if (top) tiles.push({ big: String(top.wins), label: 'Meiste Siege', sub: top.name + (top.club ? ' · ' + top.club : '') });
+    var busy = plist.slice().sort(function (a, b) { return b.time - a.time; })[0];
+    if (busy && busy.time) tiles.push({ big: Follow.duration(busy.time), label: 'Längste Spielzeit', sub: busy.name + ' · ' + busy.matches + ' Spiele' });
+    var clubs = Object.keys(st.clubs).map(function (k) { return st.clubs[k]; });
+    var topClub = clubs.slice().sort(function (a, b) { return b.wins - a.wins; })[0];
+    if (topClub && topClub.wins) tiles.push({ big: String(topClub.wins), label: 'Erfolgreichster Verein', sub: topClub.name });
+    if (sched && sched.delay != null) tiles.push({ big: Schedule.deltaText(sched.delay), label: 'Zeitplan (geschätzt)', sub: Schedule.delayText(sched.delay) + ', aus den zuletzt aufgerufenen Spielen' });
 
     var box = document.getElementById('statTiles');
     box.replaceChildren();
@@ -317,7 +428,106 @@
       box.appendChild(d);
     });
     if (!done.length) box.appendChild(el('p', 'muted', 'Noch keine beendeten Spiele.'));
+    document.getElementById('statExport').hidden = !done.length;
+
+    // Tabellen
+    var tb = document.getElementById('statTables');
+    tb.replaceChildren();
+    if (!done.length) return;
+    var evs = Object.keys(st.events).map(function (k) { return st.events[k]; }).sort(function (a, b) { return a.name.localeCompare(b.name, 'de'); });
+    tb.appendChild(table('Nach Disziplin', ['Disziplin', 'Spiele', 'Ø Dauer', 'Ø Punkte', '3 Sätze'], evs.map(function (e) {
+      return [e.name, e.matches, e.durations.length ? Follow.duration(avg(e.durations)) : null, Math.round(avg(e.points)), pct(e.three, e.matches)];
+    })));
+    var ranked = plist.slice().sort(function (a, b) { return b.wins - a.wins || (b.setsW - b.setsL) - (a.setsW - a.setsL) || (b.ptsW - b.ptsL) - (a.ptsW - a.ptsL); });
+    tb.appendChild(table('Spieler (Top 15 nach Siegen)', ['', 'Spieler', 'Verein', 'Spiele', 'Siege', 'Niederl.', 'Sätze', 'Punkte'], ranked.slice(0, 15).map(function (p, i) {
+      return [i + 1, Follow.nameEl('span', null, p.name), p.club || '', p.matches, p.wins, p.losses, p.setsW + ':' + p.setsL, p.ptsW + ':' + p.ptsL];
+    })));
+    if (clubs.length) {
+      tb.appendChild(table('Vereine', ['Verein', 'Spieler', 'Spiele', 'Siege', 'Niederl.', 'Siegquote'], clubs.sort(function (a, b) { return b.wins - a.wins || a.losses - b.losses; }).map(function (c) {
+        return [c.name, Object.keys(c.players).length, c.matches, c.wins, c.losses, pct(c.wins, c.matches)];
+      })));
+    }
+    var cts = Object.keys(st.courts).map(function (k) { return st.courts[k]; }).sort(function (a, b) { return String(a.court).localeCompare(String(b.court), 'de', { numeric: true }); });
+    if (cts.length) {
+      tb.appendChild(table('Courts', ['Court', 'Spiele', 'Spielzeit', 'Ø Dauer'], cts.map(function (c) {
+        return ['Court ' + c.court, c.matches, c.time ? Follow.duration(c.time) : null, c.time ? Follow.duration(c.time / c.matches) : null];
+      })));
+    }
   }
+
+  // ---- Export: CSV (Semikolon, UTF-8 mit BOM – öffnet sich direkt in Excel) und JSON
+  function csv(rows) {
+    return '﻿' + rows.map(function (r) {
+      return r.map(function (c) {
+        var v = c == null ? '' : String(c);
+        return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+      }).join(';');
+    }).join('\r\n') + '\r\n';
+  }
+  function minutes(ms) { return ms ? Math.round(ms / 60000) : ''; }
+  function download(name, type, text) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: type }));
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  function fileBase() {
+    var t = (last && last.tournament && last.tournament.name) || 'Turnier';
+    return t.replace(/[^\wäöüÄÖÜß.-]+/g, '_').replace(/^_+|_+$/g, '') + '_' + new Date().toISOString().slice(0, 10);
+  }
+  function exportData(kind) {
+    var st = computeStats(last);
+    var players = Object.keys(st.players).map(function (n) { return st.players[n]; });
+    var clubs = Object.keys(st.clubs).map(function (k) { return st.clubs[k]; });
+    var events = Object.keys(st.events).map(function (k) { return st.events[k]; });
+    if (kind === 'print') return window.print();
+    if (kind === 'matches') {
+      return download(fileBase() + '_Spiele.csv', 'text/csv;charset=utf-8', csv([['Spiel', 'Disziplin', 'Court', 'Ende', 'Dauer (min)',
+        'Heim', 'Verein Heim', 'Gast', 'Verein Gast', 'Sätze', 'Ergebnis', 'Sieger']].concat(st.done.map(function (m) {
+        return [m.name, eventOf(m), m.lastCourt || '', m.finishedAt ? new Date(m.finishedAt).toLocaleString('de-DE') : '', minutes(m.duration),
+          m.home.filter(Boolean).join(' / '), Follow.clubLine(m, 'home'), m.away.filter(Boolean).join(' / '), Follow.clubLine(m, 'away'),
+          m.setsWon[0] + ':' + m.setsWon[1], m.sets.map(function (s) { return s.home + ':' + s.away; }).join(' '),
+          (m.winner === 'home' ? m.home : m.away).filter(Boolean).join(' / ')];
+      }))));
+    }
+    if (kind === 'players') {
+      return download(fileBase() + '_Spieler.csv', 'text/csv;charset=utf-8', csv([['Spieler', 'Verein', 'Disziplinen', 'Spiele', 'Siege',
+        'Niederlagen', 'Sätze gewonnen', 'Sätze verloren', 'Punkte gewonnen', 'Punkte verloren', 'Spielzeit (min)']].concat(players
+        .sort(function (a, b) { return a.name.localeCompare(b.name, 'de'); }).map(function (p) {
+          return [p.name, p.club, Object.keys(p.events).join(', '), p.matches, p.wins, p.losses, p.setsW, p.setsL, p.ptsW, p.ptsL, minutes(p.time)];
+        }))));
+    }
+    if (kind === 'clubs') {
+      return download(fileBase() + '_Vereine.csv', 'text/csv;charset=utf-8', csv([['Verein', 'Spieler', 'Spiele', 'Siege', 'Niederlagen', 'Siegquote (%)']]
+        .concat(clubs.sort(function (a, b) { return a.name.localeCompare(b.name, 'de'); }).map(function (c) {
+          return [c.name, Object.keys(c.players).length, c.matches, c.wins, c.losses, c.matches ? Math.round(c.wins / c.matches * 100) : ''];
+        }))));
+    }
+    if (kind === 'events') {
+      return download(fileBase() + '_Disziplinen.csv', 'text/csv;charset=utf-8', csv([['Disziplin', 'Spiele', 'Ø Dauer (min)', 'Ø Punkte', 'Spiele über 3 Sätze']]
+        .concat(events.map(function (e) {
+          return [e.name, e.matches, minutes(avg(e.durations)), Math.round(avg(e.points)), e.three];
+        }))));
+    }
+    if (kind === 'json') {
+      return download(fileBase() + '_Statistik.json', 'application/json', JSON.stringify({
+        tournament: last && last.tournament && last.tournament.name,
+        exportedAt: new Date().toISOString(),
+        matches: st.done.map(function (m) {
+          return { name: m.name, event: eventOf(m), court: m.lastCourt, finishedAt: m.finishedAt, durationMin: minutes(m.duration) || null,
+            home: m.home, away: m.away, homeClubs: m.homeClubs, awayClubs: m.awayClubs, sets: m.sets, setsWon: m.setsWon, winner: m.winner };
+        }),
+        players: players.map(function (p) { return Object.assign({}, p, { events: Object.keys(p.events), timeMin: minutes(p.time) || 0, time: undefined }); }),
+        clubs: clubs.map(function (c) { return Object.assign({}, c, { players: Object.keys(c.players) }); }),
+        events: events.map(function (e) { return { name: e.name, matches: e.matches, avgDurationMin: minutes(avg(e.durations)) || null, avgPoints: Math.round(avg(e.points)), threeSets: e.three }; }),
+      }, null, 2));
+    }
+  }
+  document.querySelectorAll('[data-export]').forEach(function (b) {
+    b.addEventListener('click', function () { if (last) exportData(b.dataset.export); });
+  });
 
   function render(state) {
     last = state;
@@ -333,7 +543,7 @@
     renderMeine(players);
     if (tab === 'spieler') renderSpieler(players);
     if (tab === 'vereine') renderVereine(players);
-    if (tab === 'statistik') renderStats(state, players);
+    if (tab === 'statistik') renderStats(state);
     Follow.check(state);
     var c = document.getElementById('conn');
     c.textContent = state && state.bts && state.bts.connected ? 'Live verbunden' : 'Keine Verbindung zur Turniersoftware';

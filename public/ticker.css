@@ -390,3 +390,18 @@ a.court:hover { text-decoration: underline; }
 .g-place { font-weight: 800; width: 2em; }
 .group-matches { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
 .table-scroll { overflow-x: auto; }
+
+/* Statistik: Tabellen und Export */
+.stat-export { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 12px; }
+.stat-export button { font: inherit; font-size: 0.85rem; padding: 5px 11px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--card); color: var(--text); cursor: pointer; }
+.stat-export button:hover { border-color: var(--club); }
+.stat-table h3 { font-size: 0.95rem; margin: 22px 0 8px; }
+.stat-table td:nth-child(n+3) { font-variant-numeric: tabular-nums; }
+@media print {
+  body { background: #fff; }
+  .tabs, .stat-export, .foot, .pl-sched, .brand img, .back, .toasts { display: none !important; }
+  .stat, .group-table { box-shadow: none; border: 1px solid #ccc; }
+  .stat-tiles { grid-template-columns: repeat(3, 1fr); }
+  .stat-table { break-inside: avoid; }
+}

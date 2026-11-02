@@ -297,7 +297,7 @@ zusehen, braucht es eine öffentliche Adresse mit HTTPS, z. B.:
 | `/court/<nr>` | Overlay für einen Court (transparenter Hintergrund) |
 | `/courts` | Overlay mehrerer Courts (Standard: alle belegten untereinander) |
 | `/?view=field` | Liveticker in der **Spielfeld-Ansicht** (wie in bup, umschaltbar auf der Seite) |
-| `/spieler` | **Meine Spieler**, alle Spieler, Vereine, Statistik (nach dem Vorbild des EM-Tickers) |
+| `/spieler` | **Meine Spieler**, alle Spieler, Vereine, Statistik mit Tabellen nach Disziplin, Spieler, Verein und Court; **Export** als CSV (Excel), JSON oder Druck/PDF (nach dem Vorbild des EM-Tickers) |
 | `/baum` | **Turnierbäume** aller Felder (KO-Baum mit Ergebnissen, live markiert; Gruppen als Tabelle), `?d=<Feld>` ein Feld – braucht BTS-Erweiterung v3 |
 | `/ergebnis` | Overlay: Bauchbinde bei Spielende (`?mode=bar` Laufband, `?test=1` zum Einrichten) |
 | `/feld/<nr>` | Großes Spielfeld eines Courts, z. B. für einen Bildschirm in der Halle |
