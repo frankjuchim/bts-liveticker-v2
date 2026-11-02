@@ -13,6 +13,7 @@ const store = require('./lib/store');
 const branding = require('./lib/branding');
 const authLib = require('./lib/auth');
 const updaterLib = require('./lib/updater');
+const pushLib = require('./lib/push');
 
 const PORT = parseInt(process.env.PORT || '80', 10);
 const ENV_TICKER_PASSWORD = process.env.TICKER_PASSWORD || '';
@@ -32,6 +33,8 @@ let BRAND = branding.load(process.env, DATA_DIR, settings, DESIGNS);
 // ADMIN_PASSWORD gesetzt → festes Admin-Passwort (im Panel nicht änderbar)
 const auth = authLib.create(DATA_DIR, process.env.ADMIN_PASSWORD);
 const updater = updaterLib.create(__dirname, DATA_DIR);
+const push = pushLib.create(DATA_DIR, process.env.PUSH_CONTACT);
+let pushPrev = null;   // letzter Stand für die Push-Ereignisse
 let brandVersion = Date.now().toString(36);
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PATCH_DIR = path.join(__dirname, 'bts-patch');
@@ -88,6 +91,11 @@ function rebuild() {
   if (settings.hideLink) v.tournament.url = '';
   else if (settings.link) v.tournament.url = settings.link;
   stateJson = JSON.stringify(v);
+  // Push-Benachrichtigungen für gefolgte Spieler (Handy-Seite /app)
+  if (push.count()) {
+    for (const ev of pushLib.events(pushPrev, v)) push.notify(ev);
+  }
+  pushPrev = { matches: v.matches.map((m) => ({ id: m.id, status: m.status })), upcoming: (v.upcoming || []).map((u) => ({ id: u.id, state: u.state })) };
 }
 
 function loadState() {
@@ -309,6 +317,7 @@ function serveStatic(req, res, pathname) {
   if (clean === '/ergebnis') file = 'result.html';
   if (clean === '/spieler') file = 'players.html';
   if (clean === '/baum') file = 'draws.html';
+  if (clean === '/app') file = 'app.html';
   if (clean === '/felder') file = 'fields.html';
   if (!file) file = clean.replace(/^\/+/, '');
   serveFile(res, file);
@@ -626,6 +635,40 @@ function handleDisplay(req, res) {
   });
 }
 
+// Push-Abo der Handy-Seite anlegen/aktualisieren ({ subscription, players, clubs }) bzw. löschen
+function handlePush(req, res, action) {
+  readBody(req, (body) => {
+    let input = {};
+    try { input = JSON.parse(body) || {}; } catch (e) { return send(res, 400, '{"error":"JSON"}'); }
+    try {
+      if (action === 'subscribe') push.subscribe(input);
+      else push.unsubscribe(String(input.endpoint || ''));
+    } catch (e) {
+      return send(res, 400, JSON.stringify({ error: e.message }));
+    }
+    send(res, 200, '{"ok":true}');
+  }, 16 * 1024);
+}
+
+// App-Manifest für die Handy-Seite (Name und Farbe aus dem Erscheinungsbild)
+function handleManifest(res) {
+  const t = (data.tournament && data.tournament.name) || '';
+  send(res, 200, JSON.stringify({
+    name: (BRAND.title || 'Liveticker') + (t ? ' – ' + t : ''),
+    short_name: (BRAND.title || 'Liveticker').slice(0, 12),
+    description: 'Turnier-Liveticker: meine Spieler, Courts, nächste Spiele',
+    start_url: '/app',
+    scope: '/',
+    display: 'standalone',
+    background_color: '#ffffff',
+    theme_color: BRAND.accent || '#1f5f99',
+    icons: [
+      { src: '/brand-logo', sizes: 'any', purpose: 'any' },
+      { src: '/shuttle.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+    ],
+  }), 'application/manifest+json; charset=utf-8');
+}
+
 function handleTestMode(req, res) {
   if (!requireAdmin(req, res)) return;
   readBody(req, (body) => {
@@ -656,10 +699,14 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && pathname === '/api/ticker-password') return handleTickerPassword(req, res);
   if (req.method === 'POST' && pathname === '/api/testmode') return handleTestMode(req, res);
   if (req.method === 'POST' && pathname === '/api/display') return handleDisplay(req, res);
+  if (req.method === 'POST' && pathname === '/api/push/subscribe') return handlePush(req, res, 'subscribe');
+  if (req.method === 'POST' && pathname === '/api/push/unsubscribe') return handlePush(req, res, 'unsubscribe');
   if (req.method === 'POST' && pathname === '/api/bts-reconnect') return handleBtsReconnect(req, res);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, '{"error":"method"}');
   if (pathname === '/api/state') return send(res, 200, stateJson);
   if (pathname === '/api/draws') return send(res, 200, JSON.stringify(store.drawsView(data)));
+  if (pathname === '/api/push/key') return send(res, 200, JSON.stringify({ key: push.publicKey() }));
+  if (pathname === '/manifest.webmanifest') return handleManifest(res);
   if (pathname === '/api/brand') return send(res, 200, JSON.stringify(brandInfo()));
   if (pathname === '/api/admin') {
     if (!requireAdmin(req, res)) return;

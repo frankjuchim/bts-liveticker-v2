@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Liveticker</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1f5f99">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="{{TITLE}}">
+<link rel="apple-touch-icon" href="/brand-logo">
+<link rel="stylesheet" href="/ticker.css">
+<link rel="stylesheet" href="/config.css">
+<link rel="icon" href="{{LOGO}}">
+</head>
+<body class="app">
+<main class="wrap app-wrap">
+  <div class="brand">
+    <img src="{{LOGO}}" alt="" data-brand-logo>
+    <div><b data-brand="title">{{TITLE}}</b><span id="tName" data-brand="subtitle">{{SUBTITLE}}</span></div>
+  </div>
+
+  <section class="app-card" id="pushBox">
+    <div class="app-row">
+      <div>
+        <b>Benachrichtigungen</b>
+        <div class="muted app-small" id="pushState">für deine Spieler: Aufruf, gleich dran, Ergebnis</div>
+      </div>
+      <button type="button" class="app-btn" id="pushBtn">Einschalten</button>
+    </div>
+    <p class="muted app-small" id="pushHint" hidden></p>
+    <button type="button" class="app-link-btn" id="installBtn" hidden>Als App auf den Startbildschirm</button>
+  </section>
+
+  <section class="app-card">
+    <div class="app-row"><b>★ Meine Spieler</b><a class="app-more" href="/spieler">Übersicht ›</a></div>
+    <div class="chips" id="fChips"></div>
+    <input type="search" id="fAdd" class="app-input" list="fNames" placeholder="+ Spieler oder Verein folgen …" autocomplete="off">
+    <datalist id="fNames"></datalist>
+    <div id="fList" class="app-list"></div>
+  </section>
+
+  <section class="app-card">
+    <div class="app-row"><b>Auf den Courts</b><span class="sched-chip" id="delay" hidden></span></div>
+    <div id="courts" class="app-list"></div>
+  </section>
+
+  <section class="app-card" id="upBox" hidden>
+    <div class="app-row"><b>Als Nächstes</b><span class="muted app-small">ca. = Schätzung</span></div>
+    <div id="up" class="app-list"></div>
+  </section>
+
+  <nav class="app-nav">
+    <a href="/">Liveticker</a>
+    <a href="/baum" id="treeNav" hidden>Turnierbäume</a>
+    <a href="/spieler#statistik">Statistik</a>
+  </nav>
+  <footer class="foot"><span id="conn" class="conn">Verbinde …</span></footer>
+</main>
+
+<script src="/live.js"></script>
+<script src="/schedule.js"></script>
+<script src="/follow.js"></script>
+<script src="/nations.js"></script>
+<script>
+// Handy-Seite /app: zum Startbildschirm hinzufügen, Spielern folgen, Push-Benachrichtigungen
+(function () {
+  'use strict';
+  BL.applyCommonParams();
+  var el = BL.el;
+  var last = null;
+  var sched = null;
+
+  // ---- Push-Benachrichtigungen
+  var pushBtn = document.getElementById('pushBtn');
+  var pushState = document.getElementById('pushState');
+  var pushHint = document.getElementById('pushHint');
+  var ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  var canPush = window.isSecureContext && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  var reg = null;
+
+  function hint(text) { pushHint.hidden = !text; pushHint.textContent = text || ''; }
+  function b64(key) {
+    var pad = '='.repeat((4 - key.length % 4) % 4);
+    var raw = atob((key + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    var out = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+  function post(url, body) {
+    return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  }
+  function sendFollow(sub) {
+    return post('/api/push/subscribe', { subscription: sub.toJSON(), players: Follow.list(), clubs: Follow.clubs() });
+  }
+  function showPush(on) {
+    pushBtn.textContent = on ? 'Ausschalten' : 'Einschalten';
+    pushBtn.classList.toggle('off', !!on);
+    pushState.textContent = on
+      ? (Follow.list().length + Follow.clubs().length ? 'an – für deine Spieler: Aufruf, gleich dran, Ergebnis' : 'an – jetzt noch Spielern folgen')
+      : 'für deine Spieler: Aufruf, gleich dran, Ergebnis';
+  }
+  function current() {
+    return reg ? reg.pushManager.getSubscription() : Promise.resolve(null);
+  }
+  if (!canPush) {
+    pushBtn.disabled = true;
+    if (!window.isSecureContext) hint('Benachrichtigungen brauchen eine sichere Verbindung (https://). Hinweise erscheinen trotzdem, solange diese Seite offen ist.');
+    else if (ios && !standalone) hint('Auf dem iPhone/iPad: unten auf „Teilen“ → „Zum Home-Bildschirm“, dann die App vom Startbildschirm öffnen und hier einschalten.');
+    else hint('Dieser Browser unterstützt keine Push-Benachrichtigungen. Hinweise erscheinen, solange diese Seite offen ist.');
+  } else {
+    navigator.serviceWorker.register('/sw.js').then(function (r) {
+      reg = r;
+      return current();
+    }).then(function (sub) {
+      showPush(!!sub);
+      if (sub) sendFollow(sub);   // Folgen-Liste auf dem Server aktuell halten
+    }).catch(function () { hint('Benachrichtigungen konnten nicht vorbereitet werden.'); });
+  }
+  pushBtn.addEventListener('click', function () {
+    if (!reg) return;
+    pushBtn.disabled = true;
+    current().then(function (sub) {
+      if (sub) {
+        return sub.unsubscribe().then(function () { return post('/api/push/unsubscribe', { endpoint: sub.endpoint }); })
+          .then(function () { showPush(false); hint(''); });
+      }
+      return Notification.requestPermission().then(function (perm) {
+        if (perm !== 'granted') { hint('Benachrichtigungen sind im Browser blockiert – in den Website-Einstellungen erlauben.'); return; }
+        return fetch('/api/push/key').then(function (r) { return r.json(); }).then(function (k) {
+          return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(k.key) });
+        }).then(function (s) {
+          return sendFollow(s).then(function () { showPush(true); hint(''); });
+        });
+      });
+    }).catch(function (e) { hint('Einschalten hat nicht geklappt: ' + (e && e.message || e)); })
+      .then(function () { pushBtn.disabled = false; });
+  });
+  Follow.onChange(function () {
+    current().then(function (sub) { if (sub) sendFollow(sub).then(function () { showPush(true); }); });
+    if (last) render(last);
+  });
+
+  // ---- Zum Startbildschirm (Android/Chrome; iOS über „Teilen“)
+  var installEvt = null;
+  var installBtn = document.getElementById('installBtn');
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    installEvt = e;
+    installBtn.hidden = standalone;
+  });
+  installBtn.addEventListener('click', function () {
+    if (!installEvt) return;
+    installEvt.prompt();
+    installEvt.userChoice.then(function () { installBtn.hidden = true; installEvt = null; });
+  });
+  if (ios && !standalone && canPush) hint('Tipp: „Teilen“ → „Zum Home-Bildschirm“ – dann öffnet sich der Ticker wie eine App.');
+
+  // ---- Spielern folgen
+  var fAdd = document.getElementById('fAdd');
+  function addFollow() {
+    var v = fAdd.value.trim();
+    fAdd.value = '';
+    if (!v || !last) return;
+    var isClub = clubNames(last).indexOf(v) >= 0;
+    if (isClub) { if (!Follow.hasClub(v)) Follow.toggleClub(v); } else if (!Follow.has(v)) Follow.toggle(v);
+  }
+  fAdd.addEventListener('change', addFollow);
+  fAdd.addEventListener('keydown', function (e) { if (e.key === 'Enter') addFollow(); });
+
+  function allMatches(state) { return ((state && state.matches) || []).concat((state && state.upcoming) || []); }
+  function clubNames(state) {
+    var c = {};
+    allMatches(state).forEach(function (m) { (m.homeClubs || []).concat(m.awayClubs || []).forEach(function (x) { if (x) c[x] = 1; }); });
+    return Object.keys(c);
+  }
+
+  function vsLine(m) {
+    var line = el('div', 'app-vs');
+    ['home', 'away'].forEach(function (side, k) {
+      if (k) line.appendChild(el('span', 'muted', ' – '));
+      var names = BL.players(m[side], true);
+      if (!names.length) line.appendChild(el('span', 'muted', 'N. N.'));
+      names.forEach(function (n, i) {
+        if (i) line.appendChild(document.createTextNode(' / '));
+        var full = (m[side] || []).filter(Boolean)[i];
+        var span = Follow.nameEl('span', null, full, n);
+        var f = Nations.flag(((side === 'home' ? m.homeNations : m.awayNations) || [])[(m[side] || []).indexOf(full)]);
+        if (f && Nations.useful(last) && !(last.display && last.display.flagsCards === false)) span.insertBefore(f, span.firstChild);
+        line.appendChild(span);
+      });
+    });
+    return line;
+  }
+
+  function row(m, tag, tagCls, right) {
+    var r = el('div', 'app-item' + (Follow.involves(m) ? ' followed' : ''));
+    var top = el('div', 'app-top');
+    if (tag) top.appendChild(el('span', 'badge ' + (tagCls || ''), tag));
+    top.appendChild(el('span', 'muted app-small', m.name));
+    if (right) top.appendChild(right);
+    r.appendChild(top);
+    r.appendChild(vsLine(m));
+    return r;
+  }
+
+  function score(m) {
+    var split = BL.splitSets(m);
+    var s = split.done.map(function (x) { return x.home + ':' + x.away; });
+    var b = el('span', 'app-score');
+    if (s.length) b.appendChild(el('span', 'muted', s.join(' ') + ' '));
+    if (split.current) b.appendChild(el('b', null, split.current.home + ':' + split.current.away));
+    else if (m.status === 'finished') b.appendChild(el('b', null, m.setsWon[0] + ':' + m.setsWon[1]));
+    return b;
+  }
+
+  function eta(u) {
+    var e = sched && sched.eta[u.id];
+    return el('span', 'app-small', e ? 'ca. ' + Schedule.clock(e) : (u.time ? u.time + ' Uhr' : ''));
+  }
+
+  function render(state) {
+    last = state;
+    sched = Schedule.compute(state);
+    Follow.check(state);
+    var t = (state && state.tournament) || {};
+    if (t.name) document.getElementById('tName').textContent = t.name;
+    document.getElementById('treeNav').hidden = !(state && state.drawsVersion);
+
+    // Folgen: Chips und Spiele der gefolgten Spieler
+    var chips = document.getElementById('fChips');
+    chips.replaceChildren();
+    Follow.list().forEach(function (n) {
+      var c = el('button', 'chip', n); c.type = 'button';
+      c.addEventListener('click', function () { Follow.remove(n); });
+      chips.appendChild(c);
+    });
+    Follow.clubs().forEach(function (n) {
+      var c = el('button', 'chip club', n); c.type = 'button';
+      c.addEventListener('click', function () { Follow.toggleClub(n); });
+      chips.appendChild(c);
+    });
+    var names = {};
+    allMatches(state).forEach(function (m) { (m.home || []).concat(m.away || []).forEach(function (n) { if (n) names[n] = 1; }); });
+    var dl = document.getElementById('fNames');
+    var opts = Object.keys(names).sort().concat(clubNames(state).sort());
+    if (dl.dataset.key !== String(opts.length)) {
+      dl.dataset.key = String(opts.length);
+      dl.replaceChildren.apply(dl, opts.map(function (n) { var o = el('option'); o.value = n; return o; }));
+    }
+    var fl = document.getElementById('fList');
+    fl.replaceChildren();
+    var all = (state && state.matches) || [];
+    var mine = [];
+    all.forEach(function (m) {
+      if (!Follow.involves(m)) return;
+      if (m.status === 'live' || m.status === 'called') mine.push({ k: 0, el: row(m, 'Court ' + m.court, m.status === 'live' ? 'live' : 'called', score(m)) });
+    });
+    ((state && state.upcoming) || []).forEach(function (u) {
+      if (Follow.involves(u)) mine.push({ k: u.state === 'preparation' ? 1 : 2, el: row(u, u.state === 'preparation' ? 'Gleich' : null, 'called', eta(u)) });
+    });
+    all.filter(function (m) { return Follow.involves(m) && m.status === 'finished'; })
+      .sort(function (a, b) { return (b.finishedAt || '').localeCompare(a.finishedAt || ''); }).slice(0, 3)
+      .forEach(function (m) { mine.push({ k: 3, el: row(m, 'Ergebnis', 'done', score(m)) }); });
+    mine.sort(function (a, b) { return a.k - b.k; }).forEach(function (x) { fl.appendChild(x.el); });
+    if (!Follow.list().length && !Follow.clubs().length) fl.appendChild(el('p', 'muted app-small', 'Namen antippen oder oben eintragen, um Spielern zu folgen.'));
+    else if (!mine.length) fl.appendChild(el('p', 'muted app-small', 'Gerade keine Spiele deiner Spieler.'));
+
+    // Courts
+    var cs = document.getElementById('courts');
+    cs.replaceChildren();
+    ((state && state.courts) || []).forEach(function (c) {
+      var m = BL.match(state, c.match);
+      if (!m) return;
+      var r = row(m, 'Court ' + c.num, m.status === 'live' ? 'live' : 'called', score(m));
+      cs.appendChild(r);
+    });
+    if (!cs.children.length) cs.appendChild(el('p', 'muted app-small', 'Gerade läuft kein Spiel.'));
+    var dly = document.getElementById('delay');
+    dly.hidden = !(sched && sched.delay != null);
+    if (!dly.hidden) { dly.className = 'sched-chip ' + Schedule.level(sched.delay); dly.textContent = Schedule.delayText(sched.delay).replace(/^ca\. /, ''); }
+
+    // Als Nächstes
+    var up = (state && state.upcoming) || null;
+    document.getElementById('upBox').hidden = !up || !up.length;
+    var ul = document.getElementById('up');
+    ul.replaceChildren();
+    (up || []).slice(0, 6).forEach(function (u) { ul.appendChild(row(u, u.state === 'preparation' ? 'Gleich' : null, 'called', eta(u))); });
+
+    var c = document.getElementById('conn');
+    c.textContent = state && state.bts && state.bts.connected ? 'Live verbunden' : 'Keine Verbindung zur Turniersoftware';
+    c.className = 'conn ' + (state && state.bts && state.bts.connected ? 'ok' : 'warn');
+  }
+
+  BL.connect(render);
+  setInterval(function () { if (last) render(last); }, 60000);
+})();
+</script>
+</body>
+</html>

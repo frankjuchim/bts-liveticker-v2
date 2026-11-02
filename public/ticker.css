@@ -416,3 +416,25 @@ a.court:hover { text-decoration: underline; }
 .day-pick { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 10px; }
 .day-pick[hidden] { display: none; }
 .day-pick button { font: inherit; cursor: pointer; }
+
+/* Handy-Seite /app */
+body.app .app-wrap { max-width: 640px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+.app-card { background: var(--card); border-radius: 12px; padding: 10px 12px; margin-top: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.app-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.app-small { font-size: 0.8rem; }
+.app-btn { font: inherit; font-weight: 700; padding: 8px 14px; border: 0; border-radius: 999px; background: var(--club); color: #fff; cursor: pointer; white-space: nowrap; }
+.app-btn.off { background: var(--bg); color: var(--text); border: 1px solid var(--line); }
+.app-btn:disabled { opacity: 0.5; }
+.app-link-btn { font: inherit; font-size: 0.85rem; margin-top: 8px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--text); cursor: pointer; }
+.app-more { color: var(--link); text-decoration: none; font-size: 0.85rem; font-weight: 600; }
+.app-input { width: 100%; box-sizing: border-box; font: inherit; padding: 8px 12px; margin-top: 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--text); }
+.app-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.app-item { background: var(--bg); border-radius: 8px; padding: 6px 10px; }
+.app-item.followed { box-shadow: inset 3px 0 0 #f5b800; }
+.app-top { display: flex; align-items: center; gap: 8px; }
+.app-top > :last-child:not(:first-child):not(.muted) { margin-left: auto; }
+.app-score { margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.app-vs { font-size: 0.95rem; margin-top: 2px; }
+.app-nav { display: flex; justify-content: center; gap: 18px; margin: 16px 0 4px; font-size: 0.9rem; }
+.app-nav a { color: var(--link); text-decoration: none; font-weight: 600; }
+.app-nav a[hidden] { display: none; }

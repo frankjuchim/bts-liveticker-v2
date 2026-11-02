@@ -416,6 +416,7 @@
     var ul = document.getElementById('links');
     ul.replaceChildren();
     ul.appendChild(link('/', 'Liveticker für Zuschauer'));
+    ul.appendChild(link('/app', 'Handy-Seite: zum Startbildschirm hinzufügen, Spielern folgen, Push-Benachrichtigungen (braucht https)'));
     ul.appendChild(link('/courts', 'Overlay: alle belegten Courts untereinander'));
     ul.appendChild(link('/courts?cols=2', 'Overlay: Raster mit 2 Spalten'));
     if (courts.length >= 2) {
