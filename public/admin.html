@@ -183,7 +183,7 @@
   <h2>Seiten &amp; Overlays</h2>
   <section class="panel">
     <ul class="links" id="links"></ul>
-    <details class="params" open>
+    <details class="params">
       <summary>Parameter für <code>/felder</code> (alle Courts als Spielfeld)</summary>
       <p class="muted">Parameter an die Adresse hängen, mehrere mit <code>&amp;</code> verbinden –
         z. B. <code>/felder?cols=3&amp;frei=0</code>.</p>
@@ -199,8 +199,24 @@
           <tr><td><code>bg=000000</code></td><td>Hintergrundfarbe (Hex ohne #, oder <code>transparent</code>)</td><td>dunkel</td></tr>
         </tbody>
       </table>
-      <p class="muted" style="margin-bottom:0">Einzelner Court groß: <code>/feld/1</code> (gleiche Parameter <code>names</code>,
+      <p class="muted">Einzelner Court groß: <code>/feld/1</code> (gleiche Parameter <code>names</code>,
         <code>linger</code>, <code>bg</code>; <code>zurueck=1</code> zeigt den Zurück-Knopf auch bei direktem Aufruf).</p>
+    </details>
+    <details class="params">
+      <summary>Parameter für <code>/halle</code> (Hallenbildschirm)</summary>
+      <p class="muted">z. B. <code>/halle?dauer=20&amp;seiten=courts,next&amp;ansicht=feld</code></p>
+      <table class="ext-table">
+        <thead><tr><th>Parameter</th><th>Wirkung</th><th>Standard</th></tr></thead>
+        <tbody>
+          <tr><td><code>dauer=15</code></td><td>Sekunden je Ansicht, bevor gewechselt wird</td><td>15</td></tr>
+          <tr><td><code>seiten=courts,next</code></td><td>welche Ansichten in welcher Reihenfolge: <code>courts</code>, <code>next</code> (Als Nächstes), <code>results</code> (Ergebnisse); nur eine = kein Wechsel</td><td>alle drei</td></tr>
+          <tr><td><code>ansicht=feld</code></td><td>Courts als Spielfelder statt als Karten</td><td>Karten</td></tr>
+          <tr><td><code>cols=3</code></td><td>Spalten für die Courts</td><td>passend zur Anzahl</td></tr>
+          <tr><td><code>c=1,2,5</code></td><td>nur diese Courts</td><td>alle</td></tr>
+          <tr><td><code>anzahl=8</code></td><td>Zeilen bei „Als Nächstes“ und „Ergebnisse“</td><td>8</td></tr>
+          <tr><td><code>bg=000000</code></td><td>Hintergrundfarbe</td><td>dunkel</td></tr>
+        </tbody>
+      </table>
     </details>
   </section>
 
@@ -424,8 +440,12 @@
     }
     ul.appendChild(link('/?view=field', 'Liveticker in der Spielfeld-Ansicht'));
     ul.appendChild(link('/felder?cols=' + Math.min(3, Math.max(1, courts.length)), 'Alle Courts als Spielfeld (Spalten über ?cols=…, z. B. für einen Hallenbildschirm)'));
-    ul.appendChild(link('/halle', 'Hallenbildschirm: wechselt selbst zwischen Courts, Als Nächstes und Ergebnissen (?dauer=15, ?seiten=courts,next,results, ?ansicht=feld)'));
-    ul.appendChild(link('/spieler', 'Spieler-Seite: Meine Spieler, alle Spieler, Vereine, Statistik'));
+    ul.appendChild(link('/halle', 'Hallenbildschirm: wechselt selbst zwischen Courts, Als Nächstes und Ergebnissen (Parameter unten)'));
+    ul.appendChild(link('/halle?ansicht=feld', 'Hallenbildschirm mit den Courts als Spielfelder'));
+    ul.appendChild(link('/spieler', 'Spieler-Seite: Meine Spieler, alle Spieler, Vereine'));
+    ul.appendChild(link('/spieler#statistik', 'Statistik mit Export (CSV, JSON, Drucken/PDF) und Auswahl der Turniertage'));
+    var anyName = ((state && state.matches) || []).reduce(function (n, m) { return n || (m.home || [])[0]; }, '');
+    if (anyName) ul.appendChild(link('/spieler#p=' + encodeURIComponent(anyName), 'Statistik eines Spielers (Beispiel: ' + anyName + ') – auf /spieler den Namen antippen'));
     ul.appendChild(link('/baum', 'Turnierbäume und Gruppen (BTS-Erweiterung v3), einzelnes Feld: /baum?d=<Feld>'));
     ul.appendChild(link('/ergebnis', 'Overlay: Ergebnis-Einblendung bei Spielende (Test: /ergebnis?test=1)'));
     ul.appendChild(link('/ergebnis?mode=bar', 'Overlay: Laufband mit den letzten Ergebnissen'));
