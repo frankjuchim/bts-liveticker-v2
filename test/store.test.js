@@ -371,3 +371,41 @@ test('Erweiterung v4: Nationen je Spieler, sonst aus dem Vereinsfeld', () => {
   assert.deepStrictEqual(m2.homeNations, ['ENG']);   // ältere Erweiterung: Ländercode statt Verein
   assert.deepStrictEqual(m2.awayNations, ['']);
 });
+
+test('Ergebnisse aus den Feldern: auch nicht live gesehene Spiele', () => {
+  const s = store.emptyStore();
+  store.applyTset(s, {
+    xv: 4,
+    courts: [{ _id: 'c1', num: 1, match_id: 'm1' }],
+    matches: [{ _id: 'm1', n: 'HE R16', p0: ['A'], p1: ['B'], s: [[21, 10], [21, 9]], ts: true, di: 7 }],
+    upcoming: [],
+    draws: [
+      { _id: 'm1', di: 7, dn: 'HE', en: 'HE', r: 'R16', mn: 1, pl: 1, p0: ['A'], p1: ['B'], s: [[21, 10], [21, 9]], w: true, st: 'finished' },
+      { _id: 'm2', di: 7, dn: 'HE', en: 'HE', r: 'R16', mn: 2, pl: 2, p0: ['C'], p1: ['D'], s: [[10, 21], [21, 19], [18, 21]], w: false, st: 'finished', t: '10:30', dt: '2026-11-14', ss: 'normal' },
+      { _id: 'm3', di: 7, dn: 'HE', en: 'HE', r: 'VF', mn: 3, pl: 3, p0: ['A'], p1: [], s: null, w: null, st: 'scheduled' },
+    ],
+  }, '2026-11-14T10:00:00.000Z');
+  const v = store.view(s);
+  assert.strictEqual(v.matches.length, 2);   // m1 live, m2 aus dem Feld, m3 offen → nicht
+  const m2 = v.matches.find((m) => m.id === 'm2');
+  assert.strictEqual(m2.source, 'bts');
+  assert.strictEqual(m2.status, 'finished');
+  assert.strictEqual(m2.winner, 'away');
+  assert.deepStrictEqual(m2.setsWon, [1, 2]);
+  assert.strictEqual(m2.name, 'HE R16');
+  assert.strictEqual(m2.date, '2026-11-14');
+  // künftiges Format: Felder mit Knoten
+  const s2 = store.emptyStore();
+  store.applyTset(s2, { xv: 10, courts: [{ _id: 'c1', num: 1 }], matches: [], upcoming: [], draws: [
+    { id: '9', name: 'DE', event: 'DE', nodes: [
+      { pl: 1, is_match: false, bye: true, p0: ['X'], p1: [], wt: 3 },
+      { _id: 'k2', pl: 2, is_match: true, r: 'R16', p0: ['Y'], p1: ['Z'], s: [[21, 5], [21, 5]], w: true, wt: 3, end_ts: 1763110800000 },
+      { _id: 'k3', pl: 3, is_match: true, r: 'VF', f1: 1, f2: 2, p0: ['X'], p1: ['Y'] },
+    ] },
+  ] }, '2026-11-14T10:00:00.000Z');
+  const d = store.drawsView(s2).draws[0];
+  assert.strictEqual(d.matches.length, 3);
+  assert.strictEqual(d.matches.find((m) => m.planning === '1').bye, true);
+  const r = store.view(s2).matches.find((m) => m.id === 'k2');
+  assert.ok(r.finishedAt);
+});

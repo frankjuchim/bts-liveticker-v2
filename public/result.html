@@ -36,7 +36,7 @@
 
     function finishedList(state) {
       return ((state && state.matches) || [])
-        .filter(function (m) { return m.status === 'finished' && m.winner; })
+        .filter(function (m) { return m.status === 'finished' && m.winner && m.source !== 'bts'; })   // nur live gesehene
         .filter(function (m) { return !courts.length || courts.indexOf(String(m.lastCourt)) >= 0; })
         .sort(function (a, b) { return (b.finishedAt || '').localeCompare(a.finishedAt || ''); });
     }

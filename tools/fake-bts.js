@@ -146,7 +146,8 @@ function node(di, name, round, pl, a, b) {
     _id: 'draw_' + di + '_' + pl, di: String(di), dn: name, en: name, sn: 'Hauptfeld', r: round, ph: round,
     mn: ++drawMatchNr, pl, f1: null, f2: null, wt: null, lt: null,
     p0: a ? a.p : [], p1: b ? b.p : [], c0: a ? a.c : [], c1: b ? b.c : [], n0: a ? a.n : [], n1: b ? b.n : [],
-    s: null, w: null, st: a && b ? 'scheduled' : 'incomplete', t: '1' + (drawMatchNr % 8) + ':' + (drawMatchNr % 4) + '0', dt: null,
+    s: null, w: null, st: a && b ? 'scheduled' : 'incomplete', t: '1' + (drawMatchNr % 8) + ':' + (drawMatchNr % 4) + '0',
+    dt: ['R16', 'R32', 'G1'].includes(round) ? '2026-11-14' : '2026-11-15',   // zwei Turniertage
   };
 }
 function groupDraw(di, name, entries) {

@@ -159,7 +159,8 @@
     m = live(m);
     var box = el('div', 'bm' + (m.status === 'live' || m.status === 'called' ? ' live' : '') + (Follow.involves(m) ? ' followed' : ''));
     var head = el('div', 'bm-head');
-    head.appendChild(el('span', null, m.num ? 'Spiel ' + m.num : (m.round || '')));
+    var ss = { walkover: ' · kampflos', retired: ' · Aufgabe', disqualified: ' · Disq.' }[m.scoreStatus] || '';
+    head.appendChild(el('span', null, (m.num ? 'Spiel ' + m.num : (m.round || '')) + ss));
     if (m.status === 'live' || m.status === 'called') {
       var c = el('a', 'bm-court', 'Court ' + m.court + (m.status === 'live' ? ' · live' : ' · Aufruf'));
       c.href = '/feld/' + encodeURIComponent(m.court);
@@ -175,7 +176,9 @@
   // Kinder eines Spiels sind die Spiele, deren Sieger (winnerTo) in dieses Spiel gehen.
   function tree(d) {
     var byPl = {};
-    d.matches.forEach(function (m) { if (m.planning != null) byPl[m.planning] = m; });
+    // Freilos-Knoten (künftiges BTS-Format) sind keine Spiele: sie zeigt der Baum als Freilos-Kasten
+    var real = d.matches.filter(function (m) { return !m.bye; });
+    real.forEach(function (m) { if (m.planning != null) byPl[m.planning] = m; });
     function kids(m) {
       return [m.from1, m.from2].map(function (p) {
         var c = p != null ? byPl[p] : null;
@@ -183,7 +186,7 @@
       });
     }
     function size(m) { return 1 + kids(m).reduce(function (n, c) { return n + (c ? size(c) : 0); }, 0); }
-    var roots = d.matches.filter(function (m) { return !m.winnerTo || !byPl[m.winnerTo]; });
+    var roots = real.filter(function (m) { return !m.winnerTo || !byPl[m.winnerTo]; });
     roots.sort(function (a, b) { return size(b) - size(a); });
     return { roots: roots, kids: kids };
   }

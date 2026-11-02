@@ -413,3 +413,6 @@ a.court:hover { text-decoration: underline; }
 /* Flagge der Nation vor dem Namen (Karten und Listen) */
 .flag { height: 0.8em; width: auto; aspect-ratio: 4 / 3; margin-right: 0.35em; vertical-align: -0.05em; border-radius: 2px;
   box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }
+.day-pick { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 10px; }
+.day-pick[hidden] { display: none; }
+.day-pick button { font: inherit; cursor: pointer; }

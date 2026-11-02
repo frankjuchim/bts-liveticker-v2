@@ -68,6 +68,7 @@
 
   <section>
     <h2>Ergebnisse</h2>
+    <div class="day-pick" id="resDays" hidden></div>
     <div class="games" id="games"></div>
     <p class="empty muted" id="gamesEmpty" hidden>Noch keine Ergebnisse.</p>
     <button class="more" id="more" hidden>Weitere Ergebnisse anzeigen</button>
@@ -97,6 +98,8 @@
   q.value = BL.params.get('q') || '';
 
   var upLimit = 8;
+  var resDay = '';   // gewählter Turniertag der Ergebnisse ('' = alle)
+  try { resDay = sessionStorage.getItem('resDay') || ''; } catch (e) { /* egal */ }
   var sched = null;   // Zeitplan-Schätzung (schedule.js)
 
   function matches(m, term) {
@@ -200,6 +203,12 @@
     return card;
   }
 
+  // Sortierung der Ergebnisse: Spielende, sonst (nur aus BTS bekannt) angesetzter Zeitpunkt
+  function resultKey(m) {
+    if (m.finishedAt) return m.finishedAt;
+    return m.date ? m.date + 'T' + (m.time || '00:00') : '';
+  }
+
   function gameRow(m) {
     var row = el('article', 'game ' + m.status);
     var title = el('div', 'g-title');
@@ -207,10 +216,13 @@
     var meta = [];
     if (m.lastCourt) meta.push('Court ' + m.lastCourt);
     if (m.finishedAt) meta.push(BL.time(m.finishedAt) + ' Uhr');
+    else if (m.source === 'bts') meta.push(m.time ? 'angesetzt ' + m.time + ' Uhr' : 'Ergebnis aus BTS');
     if (m.duration) meta.push(Follow.duration(m.duration));
     title.appendChild(el('span', 'g-meta', meta.join(' · ')));
     if (Follow.involves(m)) row.classList.add('followed');
     if (m.status === 'ended') title.appendChild(el('span', 'badge done', 'ohne Ergebnis'));
+    var ssText = { walkover: 'kampflos', retired: 'Aufgabe', disqualified: 'Disqualifikation', no_match: 'kein Spiel' }[m.scoreStatus];
+    if (ssText) title.appendChild(el('span', 'badge done', ssText));
     row.appendChild(title);
 
     var body = el('div', 'g-body');
@@ -458,7 +470,18 @@
     // Ergebnisse: zuletzt beendete zuerst
     var results = all
       .filter(function (m) { return (m.status === 'finished' || m.status === 'ended') && matches(m, term); })
-      .sort(function (a, b) { return (b.finishedAt || '').localeCompare(a.finishedAt || ''); });
+      .sort(function (a, b) { return resultKey(b).localeCompare(resultKey(a)); });
+    // Turniertage: Auswahl, sobald Ergebnisse von mehr als einem Tag da sind
+    var days = [];
+    results.forEach(function (m) { var d = BL.dayOf(m); if (d && days.indexOf(d) < 0) days.push(d); });
+    days.sort();
+    if (resDay && days.indexOf(resDay) < 0) resDay = '';
+    BL.dayPicker(document.getElementById('resDays'), days, resDay, function (d) {
+      resDay = d;
+      try { sessionStorage.setItem('resDay', d); } catch (e) { /* egal */ }
+      rerender();
+    });
+    if (resDay) results = results.filter(function (m) { return BL.dayOf(m) === resDay; });
     var list = document.getElementById('games');
     list.replaceChildren();
     results.slice(0, limit).forEach(function (m) { list.appendChild(gameRow(m)); });

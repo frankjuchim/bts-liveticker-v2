@@ -47,6 +47,7 @@
   </section>
 
   <section data-panel="statistik" hidden>
+    <div class="day-pick" id="statDays" hidden></div>
     <div class="stat-export" id="statExport">
       <span class="muted">Export:</span>
       <button type="button" data-export="matches">Spiele (CSV)</button>
@@ -299,8 +300,10 @@
   function pct(a, b) { return b ? Math.round(a / b * 100) + ' %' : '–'; }
   function clubOf(m, side, i) { return ((side === 'home' ? m.homeClubs : m.awayClubs) || [])[i] || ''; }
 
+  var statDay = '';   // gewählter Turniertag ('' = alle)
   function computeStats(state) {
     var done = ((state && state.matches) || []).filter(function (m) { return m.status === 'finished' && m.winner; });
+    if (statDay) done = done.filter(function (m) { return BL.dayOf(m) === statDay; });
     var st = { done: done, players: {}, clubs: {}, events: {}, courts: {} };
     done.forEach(function (m) {
       // Disziplin
@@ -367,6 +370,16 @@
   }
 
   function renderStats(state) {
+    // Turniertage zur Auswahl
+    var days = [];
+    ((state && state.matches) || []).forEach(function (m) {
+      if (m.status !== 'finished' || !m.winner) return;
+      var d = BL.dayOf(m);
+      if (d && days.indexOf(d) < 0) days.push(d);
+    });
+    days.sort();
+    if (statDay && days.indexOf(statDay) < 0) statDay = '';
+    BL.dayPicker(document.getElementById('statDays'), days, statDay, function (d) { statDay = d; renderStats(last); });
     var st = computeStats(state);
     var done = st.done;
     var tiles = [];
@@ -491,7 +504,7 @@
   }
   function fileBase() {
     var t = (last && last.tournament && last.tournament.name) || 'Turnier';
-    return t.replace(/[^\wäöüÄÖÜß.-]+/g, '_').replace(/^_+|_+$/g, '') + '_' + new Date().toISOString().slice(0, 10);
+    return t.replace(/[^\wäöüÄÖÜß.-]+/g, '_').replace(/^_+|_+$/g, '') + '_' + (statDay || new Date().toISOString().slice(0, 10));
   }
   function exportData(kind) {
     var st = computeStats(last);

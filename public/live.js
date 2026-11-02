@@ -145,6 +145,33 @@
     return Boolean(sv && sv.server.side === side && sv.server.player == null && (m[side] || []).length > 1);
   }
 
+  // Turniertag eines Spiels (YYYY-MM-DD, Ortszeit): Spielende, sonst angesetztes Datum
+  function dayOf(m) {
+    if (m.finishedAt) {
+      var d = new Date(m.finishedAt);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    return m.date || null;
+  }
+  // „Sa 14.11.“
+  function dayLabel(day) {
+    var p = String(day).split('-');
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][d.getDay()] + ' ' + d.getDate() + '.' + (d.getMonth() + 1) + '.';
+  }
+  // Auswahl der Turniertage als Chips (nur bei mehr als einem Tag); onPick(day|'')
+  function dayPicker(box, days, current, onPick) {
+    box.replaceChildren();
+    box.hidden = days.length < 2;
+    if (box.hidden) return;
+    [''].concat(days).forEach(function (d) {
+      var b = el('button', 'chip-btn' + (d === current ? ' on' : ''), d ? dayLabel(d) : 'Alle Tage');
+      b.type = 'button';
+      b.addEventListener('click', function () { onPick(d); });
+      box.appendChild(b);
+    });
+  }
+
   function time(iso) {
     if (!iso) return '';
     return new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
@@ -173,6 +200,9 @@
     shortName: shortName,
     players: players,
     playerSpans: playerSpans,
+    dayOf: dayOf,
+    dayLabel: dayLabel,
+    dayPicker: dayPicker,
     servingTeamOnly: servingTeamOnly,
     time: time,
     applyCommonParams: applyCommonParams,
