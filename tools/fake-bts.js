@@ -3,8 +3,8 @@
 // Simuliert BTS: verbindet sich wie bts/ticker_conn.js mit dem Liveticker und
 // spielt auf mehreren Courts Spiele durch.
 //   node tools/fake-bts.js ws://localhost:8080/ws/update test [courts] [ms pro Punkt]
-// Standard: BTS mit Erweiterung v3 (Aufschlag, Vereine, Spieldauer, nächste Spiele,
-// Turnierbäume). EXT=2 Version 2, EXT=1 erste Version (Aufschlag), NO_EXT=1 ohne Erweiterung.
+// Standard: BTS mit Erweiterung v4 (Aufschlag, Vereine, Nationen, Spieldauer, nächste Spiele,
+// Turnierbäume). EXT=3/EXT=2/EXT=1 ältere Versionen, NO_EXT=1 ohne Erweiterung.
 
 const WebSocket = require('ws');
 
@@ -30,7 +30,7 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const PEOPLE = [];
 while (PEOPLE.length < 40) {
   const name = pick(FIRST) + ' ' + pick(LAST);
-  if (!PEOPLE.some((p) => p.name === name)) PEOPLE.push({ name, club: pick(CLUBS) });
+  if (!PEOPLE.some((p) => p.name === name)) PEOPLE.push({ name, club: pick(CLUBS), nat: pick(['GER', 'GER', 'GER', 'DEN', 'NED', 'ENG', 'FRA']) });
 }
 const person = () => pick(PEOPLE);
 
@@ -49,6 +49,7 @@ function newMatch() {
     _id: 'match_' + nextId++, n: ev + ' ' + pick(ROUNDS), p0: t0.map((p) => p.name), p1: t1.map((p) => p.name), s: [], sf: SF,
     d: doubles, ts: Math.random() < 0.5, pe: [true, true],   // wie BTS mit Erweiterung aus bts-patch/
     c0: t0.map((p) => p.club), c1: t1.map((p) => p.club),
+    n0: t0.map((p) => p.nat), n1: t1.map((p) => p.nat),
     di: ev === 'HE O19' ? '1' : (ev === 'DE U17' ? '2' : null),   // Feld (für die Turnierbäume)
   };
   matches.set(m._id, m);
@@ -188,6 +189,7 @@ const send = (msg) => ws.send(JSON.stringify(msg));
 const NO_EXT = process.env.NO_EXT === '1';
 const V1 = process.env.EXT === '1';
 const V2 = process.env.EXT === '2';
+const V3 = process.env.EXT === '3';
 const base = (m) => ({ _id: m._id, n: m.n, p0: m.p0, p1: m.p1, s: m.s, sf: m.sf });
 // Spieldauer: Echtzeit × 20, damit sie nach einem Turnierspiel aussieht
 const dur = (m) => (m.started ? (Date.now() - m.started) * 20 : null);
@@ -197,6 +199,7 @@ function plain(m) {
   if (V1) return v1;
   Object.assign(v1, { c0: m.c0, c1: m.c1, dur: dur(m) });
   if (!V2 && m.di) v1.di = m.di;
+  if (!V2 && !V3) Object.assign(v1, { n0: m.n0, n1: m.n1 });
   return v1;
 }
 const pushall = () => {
@@ -208,10 +211,11 @@ const pushall = () => {
   };
   if (!NO_EXT && !V1) {
     refill();
-    event.upcoming = queue.map((m) => ({ _id: m._id, n: m.n, p0: m.p0, p1: m.p1, c0: m.c0, c1: m.c1, t: m.t, dt: m.dt, st: m.st, mn: m.mn }));
+    event.upcoming = queue.map((m) => Object.assign({ _id: m._id, n: m.n, p0: m.p0, p1: m.p1, c0: m.c0, c1: m.c1, t: m.t, dt: m.dt, st: m.st, mn: m.mn },
+      V2 || V3 ? {} : { n0: m.n0, n1: m.n1 }));
   }
   if (!NO_EXT && !V1 && !V2) {
-    event.xv = 3;
+    event.xv = V3 ? 3 : 4;
     event.draws = DRAWS;
   }
   send({ type: 'tset', event });

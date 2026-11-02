@@ -1,7 +1,7 @@
 # BTS-Erweiterung für den Liveticker
 
 Das unveränderte BTS schickt dem Ticker nur die Spiele auf den Courts mit ihrem Spielstand.
-Vieles mehr weiß BTS aber bereits. Diese Erweiterung (Version 3) schickt es mit, damit der
+Vieles mehr weiß BTS aber bereits. Diese Erweiterung (Version 4) schickt es mit, damit der
 Liveticker zusätzlich
 
 - beim **Aufschläger** einen Punkt zeigt und im **Doppel** den **Rückschläger** unterstreicht,
@@ -15,10 +15,10 @@ Liveticker zusätzlich
 - ab Version 3 die **Turnierbäume** zeigt (`/baum`): alle Spiele aller Felder aus BTP mit
   Verknüpfungen (Sieger/Verlierer geht in Spiel …), Ergebnissen und Gruppen-Platzierungen.
 
-Wer Version 1 oder 2 eingespielt hat, führt denselben Befehl einfach noch einmal aus – er ersetzt
-die ältere Version. Bis dahin läuft alles Bisherige weiter, nur die Turnierbäume fehlen.
+Wer eine ältere Version (1 bis 3) eingespielt hat, führt denselben Befehl einfach noch einmal aus – er ersetzt
+die ältere Version. Bis dahin läuft alles Bisherige weiter, nur die neuen Teile fehlen (v3: Turnierbäume, v4: Flaggen).
 
-| Funktion | ohne Erweiterung | mit Erweiterung v3 |
+| Funktion | ohne Erweiterung | mit Erweiterung v4 |
 | --- | --- | --- |
 | Spielstände, Ergebnisse, Overlays, Ergebnis-Einblendung | ✓ | ✓ |
 | Spielern folgen, Hinweise bei Aufruf und Spielende, Spielerseite | ✓ | ✓ |
@@ -29,6 +29,7 @@ die ältere Version. Bis dahin läuft alles Bisherige weiter, nur die Turnierbä
 | „Als Nächstes“: Spiele in Vorbereitung und angesetzte Spiele | – | ✓ |
 | Verzug zum Zeitplan und voraussichtlicher Beginn (Schätzung) | – | ✓ |
 | Turnierbäume und Gruppen (`/baum`) | – | ✓ (ab v3) |
+| Flaggen der Nationen auf den Karten (wenn mehr als eine Nation mitspielt) | – | ✓ (ab v4) |
 
 Ohne Erweiterung funktioniert der Liveticker ganz normal, nur ohne diese Angaben (die
 Spieldauer schätzt er dann selbst vom ersten Punkt bis zum Spielende).
@@ -45,6 +46,7 @@ Nur die Datei `bts/ticker_conn.js` (gut 80 Zeilen). Zusätzlich gesendet werden:
 | `c0`, `c1` | Verein je Spieler (sonst Nation) | `setup.teams[].players[].club` / `.nationality` | `tset` |
 | `dur` | Spieldauer in ms | `duration_ms` (von bup) | `tset`, `tupdate_match` |
 | `upcoming` | bis zu 60 nächste Spiele: Name, Spieler, Vereine, Planzeit `t`/`dt`, Zustand `st`, Spielnummer `mn` | Spiele mit `setup.state` `preparation` oder `scheduled` | `tset` |
+| `n0`, `n1` | Nation je Spieler (v4, Ländercode wie `GER`) | `setup.teams[].players[].nationality` | `tset` |
 | `di` | Feld des Spiels (v3) | `setup.draw_id` | `tset` |
 | `draws` | alle Spiele aller Felder (v3): Feld, Runde, Spielnummer, Verknüpfungen `f1`/`f2`/`wt`/`lt`, Spieler, Vereine, Ergebnis, Gruppen-Platzierungen | `setup.draw_*`, `setup.links`, `btp_match_ids`, `network_score`, `team1_won`, `setup.btp_group_rankings` | `tset` |
 | `xv` | Version der Erweiterung (v3) | – | `tset` |

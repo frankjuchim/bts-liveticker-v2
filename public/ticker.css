@@ -406,3 +406,7 @@ a.court:hover { text-decoration: underline; }
   .stat-tiles { grid-template-columns: repeat(3, 1fr); }
   .stat-table { break-inside: avoid; }
 }
+
+/* Flagge der Nation vor dem Namen (Karten und Listen) */
+.flag { height: 0.8em; width: auto; aspect-ratio: 4 / 3; margin-right: 0.35em; vertical-align: -0.05em; border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }

@@ -229,12 +229,12 @@ In BTS: Turnier bearbeiten → **Ticker** aktivieren →
 
 Auf `http://<IP>/admin` steht danach „verbunden“. Dort gibt es auch alle Overlay-Links.
 
-### BTS-Erweiterung v3 (optional)
+### BTS-Erweiterung v4 (optional)
 
 Der Liveticker funktioniert mit jedem unveränderten BTS. Eine kleine Erweiterung lässt BTS
 zusätzliche Daten mitschicken, die es ohnehin kennt:
 
-| Funktion | ohne Erweiterung | mit Erweiterung v3 |
+| Funktion | ohne Erweiterung | mit Erweiterung v4 |
 | --- | --- | --- |
 | Spielstände, Ergebnisse, Overlays, Ergebnis-Einblendung | ✓ | ✓ |
 | Spielern folgen, Hinweise bei Aufruf und Spielende, Spielerseite | ✓ | ✓ |
@@ -245,6 +245,7 @@ zusätzliche Daten mitschicken, die es ohnehin kennt:
 | „Als Nächstes“: Spiele in Vorbereitung und angesetzte Spiele | – | ✓ |
 | Verzug zum Zeitplan und voraussichtlicher Beginn (Schätzung) | – | ✓ |
 | Turnierbäume und Gruppen (`/baum`) | – | ✓ (ab v3) |
+| Flaggen der Nationen auf den Karten (wenn mehr als eine Nation mitspielt) | – | ✓ (ab v4) |
 
 Geändert wird nur die Datei `bts/ticker_conn.js` (die Ticker-Anbindung): BTS schickt
 zusätzliche Felder mit, Bedienung, Datenbank und alle anderen Funktionen von BTS bleiben
@@ -415,3 +416,5 @@ PORT=8080 TICKER_PASSWORD=test node server.js
 node tools/fake-bts.js ws://localhost:8080/ws/update test   # simuliert BTS mit 4 Courts
 npm test
 ```
+
+Flaggen: [flag-icons](https://github.com/lipis/flag-icons) (MIT-Lizenz, `public/flags/`).

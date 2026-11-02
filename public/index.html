@@ -82,6 +82,7 @@
 <script src="/field.js"></script>
 <script src="/schedule.js"></script>
 <script src="/follow.js"></script>
+<script src="/nations.js"></script>
 <script>
 (function () {
   'use strict';
@@ -109,6 +110,17 @@
     if (m.status === 'called') return el('span', 'badge called', 'Aufruf');
     if (m.status === 'finished') return el('span', 'badge done', 'Beendet');
     return el('span', 'badge done', 'Beendet');
+  }
+
+  // Kleine Flagge vor dem Namen (nur in der Karten-Ansicht und den Listen, nicht auf dem
+  // Spielfeld) – und nur, wenn im Turnier mehr als eine Nation vorkommt
+  var flagsOn = false;
+  function addFlag(span, m, side, name) {
+    if (!flagsOn) return span;
+    var i = (m[side] || []).indexOf(name);
+    var f = i >= 0 && Nations.flag(((side === 'home' ? m.homeNations : m.awayNations) || [])[i]);
+    if (f) span.insertBefore(f, span.firstChild);
+    return span;
   }
 
   // Disziplin führt zum Turnierbaum (nur mit BTS-Erweiterung v3)
@@ -167,12 +179,13 @@
       var who = el('div', 'who');
       var names = BL.playerSpans(m, side);
       if (!names.length) who.appendChild(el('span', 'names muted', 'N. N.'));
-      names.forEach(function (n) {
+      var full = (m[side] || []).filter(Boolean);
+      names.forEach(function (n, k) {
         var name = n.textContent;
         n.classList.add('names', 'pname');
         if (Follow.has(name)) n.classList.add('fav');
         n.dataset.name = name;
-        who.appendChild(n);
+        who.appendChild(addFlag(n, m, side, full[k] || name));
       });
       var cl = Follow.clubLine(m, side);
       if (cl) who.appendChild(el('span', 'club', cl));
@@ -204,7 +217,7 @@
       var p = el('div', 'g-side ' + side + (m.winner === side ? ' winner' : ''));
       var names = BL.players(m[side]);
       if (!names.length) p.appendChild(el('span', 'muted', 'N. N.'));
-      names.forEach(function (n) { p.appendChild(Follow.nameEl('span', 'g-player', n)); });
+      names.forEach(function (n) { p.appendChild(addFlag(Follow.nameEl('span', 'g-player', n), m, side, n)); });
       var cl = Follow.clubLine(m, side);
       if (cl) p.appendChild(el('span', 'g-club', cl));
       body.appendChild(p);
@@ -245,7 +258,7 @@
       if (!names.length) t.appendChild(el('span', 'muted', 'N. N.'));
       names.forEach(function (n, j) {
         if (j) t.appendChild(document.createTextNode(' / '));
-        t.appendChild(Follow.nameEl('span', null, n));
+        t.appendChild(addFlag(Follow.nameEl('span', null, n), u, side, n));
       });
       var cl = Follow.clubLine(u, side);
       if (cl) t.appendChild(el('span', 'club', cl));
@@ -358,6 +371,7 @@
 
   function render(state) {
     last = state;
+    flagsOn = Nations.useful(state);
     sched = Schedule.compute(state);
     renderFollow(state);
     Follow.check(state);

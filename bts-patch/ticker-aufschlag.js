@@ -1,6 +1,6 @@
 'use strict';
 
-// Erweitert bts/ticker_conn.js von BTS für den Liveticker (bts-liveticker-v2), Version 3.
+// Erweitert bts/ticker_conn.js von BTS für den Liveticker (bts-liveticker-v2), Version 4.
 // Funktioniert mit älteren und neueren BTS-Versionen, weil nur an festen
 // Ankerstellen eingefügt wird:
 //   node ticker-aufschlag.js bts/ticker_conn.js
@@ -10,6 +10,7 @@
 //   pe  = je Team: steht Spieler 1 im rechten Feld             tset + tupdate_match
 //   d   = Doppel (setup.is_doubles)                            tset
 //   c0/c1 = Verein (sonst Nation) je Spieler                   tset
+//   n0/n1 = Nation (Ländercode wie GER) je Spieler (v4)        tset
 //   dur = Spieldauer in ms (aus bup)                           tset + tupdate_match
 //   upcoming = die nächsten Spiele (in Vorbereitung / geplant)  tset
 //   di  = Feld (draw_id) je Spiel                              tset
@@ -21,7 +22,7 @@
 
 const fs = require('fs');
 
-const VERSION = 3;
+const VERSION = 4;
 const MARKER = 'bts-liveticker-erweiterung v' + VERSION;
 const file = process.argv[2] || 'bts/ticker_conn.js';
 let src = fs.readFileSync(file, 'utf8');
@@ -61,6 +62,7 @@ const HELPERS = [
   "\tif (m.setup.draw_id != null) res.di = String(m.setup.draw_id);",
   '\t(m.setup.teams || []).forEach((t, tidx) => {',
   "\t\tres['c' + tidx] = (t.players || []).map(p => (p && (p.club || p.nationality)) || '');",
+  "\t\tres['n' + tidx] = (t.players || []).map(p => (p && p.nationality) || '');",
   '\t});',
   '\treturn res;',
   '}',
@@ -72,6 +74,7 @@ const HELPERS = [
   '\t\tif (err || !Array.isArray(matches)) return cb(undefined, undefined);',
   '\t\tconst names = t => ((t && t.players) || []).map(p => (p && p.name) || \'\');',
   "\t\tconst clubs = t => ((t && t.players) || []).map(p => (p && (p.club || p.nationality)) || '');",
+  "\t\tconst nations = t => ((t && t.players) || []).map(p => (p && p.nationality) || '');",
   '\t\tconst open = matches.filter(m => {',
   '\t\t\tconst s = m.setup || {};',
   "\t\t\tif (s.now_on_court || m.end_ts || typeof m.team1_won === 'boolean') return false;",
@@ -85,6 +88,7 @@ const HELPERS = [
   '\t\t\tm.setup.teams.forEach((t, tidx) => {',
   "\t\t\t\tres['p' + tidx] = names(t);",
   "\t\t\t\tres['c' + tidx] = clubs(t);",
+  "\t\t\t\tres['n' + tidx] = nations(t);",
   '\t\t\t});',
   '\t\t\tres.t = m.setup.scheduled_time_str || null;',
   '\t\t\tres.dt = m.setup.scheduled_date || null;',
@@ -106,6 +110,7 @@ const HELPERS = [
   '\t\t\t\twt: l.winner_to != null ? l.winner_to : null, lt: l.loser_to != null ? l.loser_to : null,',
   '\t\t\t\tp0: names((s.teams || [])[0]), p1: names((s.teams || [])[1]),',
   '\t\t\t\tc0: clubs((s.teams || [])[0]), c1: clubs((s.teams || [])[1]),',
+  '\t\t\t\tn0: nations((s.teams || [])[0]), n1: nations((s.teams || [])[1]),',
   "\t\t\t\ts: m.network_score || null, w: typeof m.team1_won === 'boolean' ? m.team1_won : null,",
   "\t\t\t\tst: s.state || null, t: s.scheduled_time_str || null, dt: s.scheduled_date || null,",
   '\t\t\t};',

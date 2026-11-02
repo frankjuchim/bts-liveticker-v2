@@ -234,7 +234,7 @@ test('Erweiterung v2: Vereine, Spieldauer und die nächsten Spiele', () => {
   assert.strictEqual(v.upcoming.length, 2);
   assert.deepStrictEqual(v.upcoming[0], {
     id: 'u1', name: 'HD U19', home: ['A A', 'B B'], away: ['C C', 'D D'], homeClubs: ['X', 'X'], awayClubs: ['Y', 'Y'],
-    time: '14:30', date: '2026-11-01', state: 'preparation', num: '7', drawId: null,
+    time: '14:30', date: '2026-11-01', state: 'preparation', num: '7', drawId: null, homeNations: ['', ''], awayNations: ['', ''],
   });
   // Spieldauer aus BTS (bup), sobald das Spiel beendet ist
   assert.strictEqual(v.matches[0].duration, null, 'läuft noch');
@@ -331,7 +331,7 @@ test('Erweiterung v3: Felder für die Turnierbäume', () => {
   }, '2026-11-14T10:00:00.000Z');
   const v = store.view(s);
   assert.strictEqual(v.btsExtVersion, 3);
-  assert.strictEqual(v.btsExtLatest, 3);
+  assert.strictEqual(v.btsExtLatest, 4);
   assert.ok(v.drawsVersion);
   assert.strictEqual(v.matches[0].drawId, '7');
   const d = store.drawsView(s).draws;
@@ -350,4 +350,24 @@ test('Erweiterung v3: Felder für die Turnierbäume', () => {
   store.applyTset(s2, { courts: [{ _id: 'c1', num: 1, match_id: 'm1' }], matches: [{ _id: 'm1', p0: ['A'], p1: ['B'], ts: true }], upcoming: [] }, '2026-11-14T10:00:00.000Z');
   assert.strictEqual(store.view(s2).btsExtVersion, 2);
   assert.strictEqual(store.drawsView(s2).draws, null);
+});
+
+test('Erweiterung v4: Nationen je Spieler, sonst aus dem Vereinsfeld', () => {
+  const s = store.emptyStore();
+  store.applyTset(s, {
+    xv: 4,
+    courts: [{ _id: 'c1', num: 1, match_id: 'm1' }, { _id: 'c2', num: 2, match_id: 'm2' }],
+    matches: [
+      { _id: 'm1', n: 'HD', p0: ['A', 'B'], p1: ['C', 'D'], ts: true, c0: ['TV X', 'TV X'], c1: ['DEN', 'DEN'], n0: ['GER', 'ger'], n1: ['DEN', ''] },
+      { _id: 'm2', n: 'HE', p0: ['E'], p1: ['F'], ts: true, c0: ['ENG'], c1: ['BC Y'] },
+    ],
+  }, '2026-11-14T10:00:00.000Z');
+  const v = store.view(s);
+  assert.strictEqual(v.btsExtVersion, 4);
+  const m1 = v.matches.find((m) => m.id === 'm1');
+  assert.deepStrictEqual(m1.homeNations, ['GER', 'GER']);
+  assert.deepStrictEqual(m1.awayNations, ['DEN', '']);
+  const m2 = v.matches.find((m) => m.id === 'm2');
+  assert.deepStrictEqual(m2.homeNations, ['ENG']);   // ältere Erweiterung: Ländercode statt Verein
+  assert.deepStrictEqual(m2.awayNations, ['']);
 });

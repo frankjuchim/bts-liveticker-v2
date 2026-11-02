@@ -1,12 +1,12 @@
 diff --git a/bts/ticker_conn.js b/bts/ticker_conn.js
-index 3dea153..7f0b449 100644
+index 3dea153..3bafed4 100644
 --- a/bts/ticker_conn.js
 +++ b/bts/ticker_conn.js
-@@ -19,9 +19,82 @@ function craft_court(c) {
+@@ -19,9 +19,86 @@ function craft_court(c) {
  	return utils.pluck(c, ['num', 'match_id', '_id']);
  }
  
-+// bts-liveticker-erweiterung v3 – zusätzliche Daten für den Liveticker:
++// bts-liveticker-erweiterung v4 – zusätzliche Daten für den Liveticker:
 +// Aufschlag/Positionen, Doppel, Vereine, Spieldauer und die nächsten Spiele
 +function craft_service(m) {
 +	return {
@@ -22,6 +22,7 @@ index 3dea153..7f0b449 100644
 +	if (m.setup.draw_id != null) res.di = String(m.setup.draw_id);
 +	(m.setup.teams || []).forEach((t, tidx) => {
 +		res['c' + tidx] = (t.players || []).map(p => (p && (p.club || p.nationality)) || '');
++		res['n' + tidx] = (t.players || []).map(p => (p && p.nationality) || '');
 +	});
 +	return res;
 +}
@@ -33,6 +34,7 @@ index 3dea153..7f0b449 100644
 +		if (err || !Array.isArray(matches)) return cb(undefined, undefined);
 +		const names = t => ((t && t.players) || []).map(p => (p && p.name) || '');
 +		const clubs = t => ((t && t.players) || []).map(p => (p && (p.club || p.nationality)) || '');
++		const nations = t => ((t && t.players) || []).map(p => (p && p.nationality) || '');
 +		const open = matches.filter(m => {
 +			const s = m.setup || {};
 +			if (s.now_on_court || m.end_ts || typeof m.team1_won === 'boolean') return false;
@@ -46,6 +48,7 @@ index 3dea153..7f0b449 100644
 +			m.setup.teams.forEach((t, tidx) => {
 +				res['p' + tidx] = names(t);
 +				res['c' + tidx] = clubs(t);
++				res['n' + tidx] = nations(t);
 +			});
 +			res.t = m.setup.scheduled_time_str || null;
 +			res.dt = m.setup.scheduled_date || null;
@@ -67,6 +70,7 @@ index 3dea153..7f0b449 100644
 +				wt: l.winner_to != null ? l.winner_to : null, lt: l.loser_to != null ? l.loser_to : null,
 +				p0: names((s.teams || [])[0]), p1: names((s.teams || [])[1]),
 +				c0: clubs((s.teams || [])[0]), c1: clubs((s.teams || [])[1]),
++				n0: nations((s.teams || [])[0]), n1: nations((s.teams || [])[1]),
 +				s: m.network_score || null, w: typeof m.team1_won === 'boolean' ? m.team1_won : null,
 +				st: s.state || null, t: s.scheduled_time_str || null, dt: s.scheduled_date || null,
 +			};
@@ -85,7 +89,7 @@ index 3dea153..7f0b449 100644
  	res.sf = m.setup.scoring_format;
  	res.n = m.setup.event_name + ' ' + m.setup.match_name;
  	m.setup.teams.forEach((t, tidx) => {
-@@ -114,9 +187,14 @@ class TickerConn {
+@@ -114,9 +191,14 @@ class TickerConn {
  				return;
  			}
  
@@ -93,7 +97,7 @@ index 3dea153..7f0b449 100644
 -				type: 'tset',
 -				event,
 +			liveticker_extra(this.app, this.tournament_key, (upcoming, draws) => {
-+				event.xv = 3;
++				event.xv = 4;
 +				if (upcoming) event.upcoming = upcoming;
 +				if (draws) event.draws = draws;
 +				this.sendmsg({
@@ -103,7 +107,7 @@ index 3dea153..7f0b449 100644
  			});
  		});
  	}
-@@ -127,6 +205,7 @@ class TickerConn {
+@@ -127,6 +209,7 @@ class TickerConn {
  			match: {
  				_id: match._id,
  				s: match.network_score,
