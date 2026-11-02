@@ -29,6 +29,11 @@
   </nav>
   <p class="sched-note pl-sched" id="plSched" hidden></p>
 
+  <section data-panel="profil" hidden>
+    <a href="#spieler" class="back pl-back">‹ Alle Spieler</a>
+    <div id="profil"></div>
+  </section>
+
   <section data-panel="meine">
     <p class="muted" id="meineHint">Noch niemandem gefolgt. Unter „Alle Spieler“ oder „Vereine“ den Stern antippen – oder im
       Liveticker auf einen Namen tippen.</p>
@@ -67,6 +72,7 @@
 <script src="/live.js"></script>
 <script src="/schedule.js"></script>
 <script src="/follow.js"></script>
+<script src="/nations.js"></script>
 <script>
 (function () {
   'use strict';
@@ -183,12 +189,21 @@
     });
   }
 
+  // Name als Link zur Spieler-Statistik (#p=Name)
+  function profileLink(tag, name) {
+    var a = el('a', 'pl-link');
+    a.href = '#p=' + encodeURIComponent(name);
+    a.title = 'Statistik von ' + name;
+    a.appendChild(el(tag, null, name));
+    return a;
+  }
+
   function playerCard(p) {
     var card = el('article', 'pl-card');
     var head = el('div', 'pl-head');
     head.appendChild(starBtn(true, 'Nicht mehr folgen', function () { Follow.remove(p.name); }));
     var who = el('div', 'pl-who');
-    who.appendChild(el('b', null, p.name));
+    who.appendChild(profileLink('b', p.name));
     var sub = [];
     if (p.club) sub.push(p.club);
     if (p.wins + p.losses) sub.push(p.wins + (p.wins === 1 ? ' Sieg' : ' Siege') + ' · ' + p.losses + (p.losses === 1 ? ' Niederlage' : ' Niederlagen'));
@@ -234,7 +249,7 @@
       var row = el('div', 'pl-row');
       row.appendChild(starBtn(Follow.has(p.name), Follow.has(p.name) ? 'Nicht mehr folgen' : 'Folgen', function () { Follow.toggle(p.name); }));
       var who = el('div', 'pl-who');
-      who.appendChild(el('b', null, p.name));
+      who.appendChild(profileLink('b', p.name));
       if (p.club) who.appendChild(el('span', 'muted', p.club));
       row.appendChild(who);
       var st = status(p);
@@ -276,7 +291,9 @@
       c.players.sort(function (a, b) { return a.name.localeCompare(b.name, 'de'); }).forEach(function (p) {
         var row = el('div', 'pl-row sub');
         row.appendChild(starBtn(Follow.has(p.name), 'Folgen', function () { Follow.toggle(p.name); }));
-        row.appendChild(el('span', 'pl-who', p.name));
+        var pw = el('span', 'pl-who');
+        pw.appendChild(profileLink('span', p.name));
+        row.appendChild(pw);
         var st = status(p);
         if (st) row.appendChild(el('span', 'pl-status ' + st.cls, st.text));
         if (p.wins + p.losses) row.appendChild(el('span', 'pl-rec', p.wins + ':' + p.losses));
@@ -469,7 +486,7 @@
     })));
     var ranked = plist.slice().sort(function (a, b) { return b.wins - a.wins || (b.setsW - b.setsL) - (a.setsW - a.setsL) || (b.ptsW - b.ptsL) - (a.ptsW - a.ptsL); });
     tb.appendChild(table('Spieler (Top 15 nach Siegen)', ['', 'Spieler', 'Verein', 'Spiele', 'Siege', 'Niederl.', 'Sätze', 'Punkte'], ranked.slice(0, 15).map(function (p, i) {
-      return [i + 1, Follow.nameEl('span', null, p.name), p.club || '', p.matches, p.wins, p.losses, p.setsW + ':' + p.setsL, p.ptsW + ':' + p.ptsL];
+      return [i + 1, profileLink('span', p.name), p.club || '', p.matches, p.wins, p.losses, p.setsW + ':' + p.setsL, p.ptsW + ':' + p.ptsL];
     })));
     if (clubs.length) {
       tb.appendChild(table('Vereine', ['Verein', 'Spieler', 'Spiele', 'Siege', 'Niederl.', 'Siegquote'], clubs.sort(function (a, b) { return b.wins - a.wins || a.losses - b.losses; }).map(function (c) {
@@ -481,6 +498,128 @@
       tb.appendChild(table('Courts', ['Court', 'Spiele', 'Spielzeit', 'Ø Dauer'], cts.map(function (c) {
         return ['Court ' + c.court, c.matches, c.time ? Follow.duration(c.time) : null, c.time ? Follow.duration(c.time / c.matches) : null];
       })));
+    }
+  }
+
+  // ---- Statistik eines einzelnen Spielers
+  function renderProfile(state) {
+    var name = profileName;
+    var box = document.getElementById('profil');
+    box.replaceChildren();
+    var all = (state && state.matches) || [];
+    var mine = all.filter(function (m) { return (m.home || []).indexOf(name) >= 0 || (m.away || []).indexOf(name) >= 0; });
+    var ups = ((state && state.upcoming) || []).filter(function (u) { return (u.home || []).indexOf(name) >= 0 || (u.away || []).indexOf(name) >= 0; });
+    var sideOf = function (m) { return (m.home || []).indexOf(name) >= 0 ? 'home' : 'away'; };
+    var other = function (sd) { return sd === 'home' ? 'away' : 'home'; };
+    // Kopf
+    var anyM = mine[0] || ups[0];
+    var club = '', nat = '';
+    if (anyM) {
+      var sd0 = sideOf(anyM), i0 = anyM[sd0].indexOf(name);
+      club = ((sd0 === 'home' ? anyM.homeClubs : anyM.awayClubs) || [])[i0] || '';
+      nat = ((sd0 === 'home' ? anyM.homeNations : anyM.awayNations) || [])[i0] || '';
+    }
+    var head = el('div', 'pl-head pl-profile-head');
+    head.appendChild(starBtn(Follow.has(name), Follow.has(name) ? 'Nicht mehr folgen' : 'Folgen', function () { Follow.toggle(name); }));
+    var who = el('div', 'pl-who');
+    var h = el('h2', 'pl-name');
+    var f = nat && Nations.flag(nat);
+    if (f) h.appendChild(f);
+    h.appendChild(document.createTextNode(name));
+    who.appendChild(h);
+    if (club) who.appendChild(el('span', 'muted', club));
+    head.appendChild(who);
+    var live = mine.filter(function (m) { return m.status === 'live' || m.status === 'called'; })[0];
+    if (live) head.appendChild(el('span', 'pl-status live', (live.status === 'live' ? 'Spielt auf Court ' : 'Aufruf Court ') + live.court));
+    box.appendChild(head);
+    if (!anyM) { box.appendChild(el('p', 'muted', 'Zu diesem Spieler gibt es noch keine Spiele.')); return; }
+
+    // Kennzahlen aus den beendeten Spielen
+    var done = mine.filter(function (m) { return m.status === 'finished' && m.winner; })
+      .sort(function (a, b) { return (a.finishedAt || a.date || '').localeCompare(b.finishedAt || b.date || ''); });
+    var st = { w: 0, l: 0, sw: 0, sl: 0, pw: 0, pl: 0, time: 0, timed: 0, three: 0, threeW: 0, turned: 0, ext: 0, extW: 0, longest: null };
+    var partners = {}, opponents = {}, events = {};
+    done.forEach(function (m) {
+      var me = sideOf(m), op = other(me), won = m.winner === me;
+      st[won ? 'w' : 'l']++;
+      m.sets.forEach(function (x) {
+        if (x[me] > x[op]) st.sw++; else if (x[op] > x[me]) st.sl++;
+        st.pw += x[me]; st.pl += x[op];
+        if (Math.max(x.home, x.away) > 21) { st.ext++; if (x[me] > x[op]) st.extW++; }
+      });
+      if (m.duration) { st.time += m.duration; st.timed++; if (!st.longest || m.duration > st.longest.duration) st.longest = m; }
+      if (m.sets.length >= 3) { st.three++; if (won) st.threeW++; }
+      var f1 = m.sets[0];
+      if (won && f1 && f1[op] > f1[me]) st.turned++;
+      var ev = eventOf(m);
+      var e = events[ev] || (events[ev] = { name: ev, w: 0, l: 0 });
+      e[won ? 'w' : 'l']++;
+      m[me].forEach(function (n) { if (n && n !== name) { var p = partners[n] || (partners[n] = { name: n, w: 0, l: 0 }); p[won ? 'w' : 'l']++; } });
+      var key = m[op].filter(Boolean).join(' / ');
+      if (key) { var o = opponents[key] || (opponents[key] = { name: key, w: 0, l: 0 }); o[won ? 'w' : 'l']++; }
+    });
+    var tiles = [
+      { big: st.w + ':' + st.l, label: 'Siege : Niederlagen', sub: done.length ? pct(st.w, done.length) + ' Siegquote' : 'noch kein Ergebnis' },
+      { big: st.sw + ':' + st.sl, label: 'Sätze', sub: st.pw + ':' + st.pl + ' Punkte' },
+    ];
+    if (st.timed) tiles.push({ big: Follow.duration(st.time), label: 'Spielzeit', sub: 'Ø ' + Follow.duration(st.time / st.timed) + ' je Spiel' });
+    if (st.longest) tiles.push({ big: Follow.duration(st.longest.duration), label: 'Längstes Spiel', sub: desc(st.longest) });
+    if (done.length) {
+      tiles.push({ big: String(st.three), label: 'Spiele über drei Sätze', sub: st.threeW + ' davon gewonnen' });
+      tiles.push({ big: String(st.turned), label: 'Gedrehte Spiele', sub: 'Sieg nach verlorenem ersten Satz' });
+      tiles.push({ big: String(st.ext), label: 'Verlängerte Sätze', sub: st.extW + ' davon gewonnen' });
+    }
+    var tb = el('div', 'stat-tiles');
+    tiles.forEach(function (t) {
+      var d = el('div', 'stat');
+      d.appendChild(el('b', null, t.big));
+      d.appendChild(el('span', 'stat-label', t.label));
+      if (t.sub) d.appendChild(el('span', 'muted', t.sub));
+      tb.appendChild(d);
+    });
+    box.appendChild(tb);
+
+    // Nächste Spiele und laufendes Spiel
+    var nxt = mine.filter(function (m) { return m.status === 'live' || m.status === 'called'; }).map(function (m) { return { m: m, side: sideOf(m) }; })
+      .concat(ups.map(function (u) { return { u: u, side: sideOf(u) }; }));
+    if (nxt.length) {
+      box.appendChild(el('h3', 'pl-h3', 'Als Nächstes'));
+      var nl = el('div', 'pl-card');
+      nxt.forEach(function (x) { nl.appendChild(itemRow(x, name)); });
+      box.appendChild(nl);
+    }
+
+    // Spielverlauf (neueste zuerst), Sätze aus Sicht des Spielers
+    if (done.length) {
+      box.appendChild(table('Spiele', ['', 'Spiel', 'Partner', 'Gegner', 'Sätze', 'Dauer'], done.slice().reverse().map(function (m) {
+        var me = sideOf(m), op = other(me), won = m.winner === me;
+        var res = el('span', 'badge ' + (won ? 'won' : 'lost'), won ? 'Sieg' : 'Niederlage');
+        return [res, m.name + (m.lastCourt ? ' · Court ' + m.lastCourt : ''),
+          m[me].filter(function (n) { return n && n !== name; }).join(' / ') || '–',
+          m[op].filter(Boolean).join(' / '),
+          m.sets.map(function (x) { return x[me] + ':' + x[op]; }).join('  '),
+          m.duration ? Follow.duration(m.duration) : null];
+      })));
+      var evs = Object.keys(events).map(function (k) { return events[k]; });
+      if (evs.length > 1) tb.parentNode.appendChild(table('Nach Disziplin', ['Disziplin', 'Siege', 'Niederlagen'], evs.map(function (e) { return [e.name, e.w, e.l]; })));
+      var ps = Object.keys(partners).map(function (k) { return partners[k]; });
+      if (ps.length) box.appendChild(table('Partner', ['Partner', 'Siege', 'Niederlagen'], ps.map(function (p) { return [profileLink('span', p.name), p.w, p.l]; })));
+      var os = Object.keys(opponents).map(function (k) { return opponents[k]; });
+      box.appendChild(table('Gegner', ['Gegner', 'Siege', 'Niederlagen'], os.map(function (o) { return [o.name, o.w, o.l]; })));
+      var exp = el('div', 'stat-export');
+      var bt = el('button', null, 'Spiele exportieren (CSV)');
+      bt.type = 'button';
+      bt.addEventListener('click', function () {
+        download(fileBase() + '_' + name.replace(/[^\wäöüÄÖÜß.-]+/g, '_') + '.csv', 'text/csv;charset=utf-8', csv([['Spiel', 'Court', 'Ende', 'Ergebnis', 'Partner', 'Gegner', 'Sätze', 'Dauer (min)']]
+          .concat(done.map(function (m) {
+            var me = sideOf(m), op = other(me);
+            return [m.name, m.lastCourt || '', m.finishedAt ? new Date(m.finishedAt).toLocaleString('de-DE') : (m.date || ''),
+              m.winner === me ? 'Sieg' : 'Niederlage', m[me].filter(function (n) { return n && n !== name; }).join(' / '),
+              m[op].filter(Boolean).join(' / '), m.sets.map(function (x) { return x[me] + ':' + x[op]; }).join(' '), minutes(m.duration)];
+          }))));
+      });
+      exp.appendChild(bt);
+      box.appendChild(exp);
     }
   }
 
@@ -573,14 +712,21 @@
     if (tab === 'spieler') renderSpieler(players);
     if (tab === 'vereine') renderVereine(players);
     if (tab === 'statistik') renderStats(state);
+    if (tab === 'profil') renderProfile(state);
     Follow.check(state);
     var c = document.getElementById('conn');
     c.textContent = state && state.bts && state.bts.connected ? 'Live verbunden' : 'Keine Verbindung zur Turniersoftware';
     c.className = 'conn ' + (state && state.bts && state.bts.connected ? 'ok' : 'warn');
   }
 
+  var profileName = '';
   function showTab(t) {
-    if (['meine', 'spieler', 'vereine', 'statistik'].indexOf(t) < 0) t = 'meine';
+    if (/^p=/.test(t)) {
+      profileName = decodeURIComponent(t.slice(2));
+      t = 'profil';
+      window.scrollTo(0, 0);
+    }
+    if (['meine', 'spieler', 'vereine', 'statistik', 'profil'].indexOf(t) < 0) t = 'meine';
     tab = t;
     document.querySelectorAll('.tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === t); });
     document.querySelectorAll('[data-panel]').forEach(function (s) { s.hidden = s.dataset.panel !== t; });
