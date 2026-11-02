@@ -56,6 +56,11 @@
       <button type="button" data-export="json">Alles (JSON)</button>
       <button type="button" data-export="print">Drucken / PDF</button>
     </div>
+    <div class="print-bar" id="printBar" hidden>
+      <button type="button" id="printNow">Drucken / als PDF speichern</button>
+      <span class="muted">Öffnet sich kein Druckdialog: im Browser-Menü <b>Drucken</b> wählen (Strg+P, am Mac ⌘+P),
+        auf dem Handy über <b>Teilen → Drucken</b>; dort lässt sich auch „Als PDF sichern“ wählen.</span>
+    </div>
     <div id="statTiles" class="stat-tiles"></div>
     <div id="statTables"></div>
   </section>
@@ -73,6 +78,12 @@
   var el = BL.el;
   var last = null;
   var tab = (location.hash || '#meine').slice(1);
+  // Druckansicht (?druck=1): nur die Statistik, Druck startet von selbst
+  var printMode = BL.params.get('druck') === '1';
+  if (printMode) {
+    tab = 'statistik';
+    document.body.classList.add('print-view');
+  }
   var pq = document.getElementById('pq');
   var sched = null;   // Zeitplan-Schätzung (schedule.js)
 
@@ -482,7 +493,7 @@
     var players = Object.keys(st.players).map(function (n) { return st.players[n]; });
     var clubs = Object.keys(st.clubs).map(function (k) { return st.clubs[k]; });
     var events = Object.keys(st.events).map(function (k) { return st.events[k]; });
-    if (kind === 'print') return window.print();
+    if (kind === 'print') return printView();
     if (kind === 'matches') {
       return download(fileBase() + '_Spiele.csv', 'text/csv;charset=utf-8', csv([['Spiel', 'Disziplin', 'Court', 'Ende', 'Dauer (min)',
         'Heim', 'Verein Heim', 'Gast', 'Verein Gast', 'Sätze', 'Ergebnis', 'Sieger']].concat(st.done.map(function (m) {
@@ -538,7 +549,7 @@
       'Zeiten mit „ca.“ sind unverbindliche Schätzungen aus dem bisherigen Turnierverlauf – ' +
       'maßgeblich ist allein der Aufruf durch die Turnierleitung.';
     var t = (state && state.tournament) || {};
-    document.getElementById('tName').textContent = t.name ? t.name + ' – Spieler' : 'Spieler';
+    document.getElementById('tName').textContent = t.name ? t.name + (printMode ? ' – Statistik' : ' – Spieler') : (printMode ? 'Statistik' : 'Spieler');
     var players = collect(state);
     renderMeine(players);
     if (tab === 'spieler') renderSpieler(players);
@@ -564,6 +575,27 @@
   pq.addEventListener('input', function () { if (last) render(last); });
   document.getElementById('notifyBtn').addEventListener('click', function () { Follow.askNotify(function () { if (last) render(last); }); });
   Follow.onChange(function () { if (last) render(last); });
+  // Eigener Tab für den Druck: In App-Ansichten und eingebetteten Browsern bleibt
+  // window.print() sonst oft ohne Wirkung
+  function printView() {
+    if (printMode) { try { window.print(); } catch (e) { /* Hinweis steht da */ } return; }
+    var w = window.open('/spieler?druck=1#statistik', '_blank');
+    if (!w) {
+      try { window.print(); } catch (e) { /* egal */ }
+    }
+  }
+  if (printMode) {
+    document.getElementById('printBar').hidden = false;
+    document.getElementById('printNow').addEventListener('click', function () { try { window.print(); } catch (e) { /* egal */ } });
+    var printed = false;
+    var waitData = setInterval(function () {
+      if (printed || !last) return;
+      printed = true;
+      clearInterval(waitData);
+      setTimeout(function () { try { window.print(); } catch (e) { /* Hinweis steht da */ } }, 600);
+    }, 300);
+  }
+
   showTab(tab);
   BL.connect(render);
   setInterval(function () { if (last) render(last); }, 60000);
