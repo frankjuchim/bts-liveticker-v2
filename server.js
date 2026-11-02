@@ -53,6 +53,15 @@ const TEST_FILE = path.join(DATA_DIR, 'testmode.json');
 let testMode = false;
 try { testMode = JSON.parse(fs.readFileSync(TEST_FILE, 'utf8')).on === true; } catch (e) { /* aus */ }
 
+// Anzeige-Optionen aus dem Admin-Panel (Standard: alles an)
+const DISPLAY_FILE = path.join(DATA_DIR, 'display.json');
+const DISPLAY_DEFAULTS = { flagsCards: true, flagsField: true };
+let display = Object.assign({}, DISPLAY_DEFAULTS);
+try {
+  const d = JSON.parse(fs.readFileSync(DISPLAY_FILE, 'utf8'));
+  for (const k of Object.keys(DISPLAY_DEFAULTS)) if (typeof d[k] === 'boolean') display[k] = d[k];
+} catch (e) { /* Standard */ }
+
 if (!tickerPassword()) {
   console.warn('WARNUNG: Kein Ticker-Passwort gesetzt (TICKER_PASSWORD oder Admin-Panel) – BTS-Verbindungen werden abgelehnt.');
 }
@@ -74,7 +83,7 @@ function btsInfo() {
 }
 
 function rebuild() {
-  const v = store.view(data, { bts: btsInfo(), testMode });
+  const v = store.view(data, { bts: btsInfo(), testMode, display });
   // Link aus dem Admin-Panel geht vor den Link von BTS
   if (settings.hideLink) v.tournament.url = '';
   else if (settings.link) v.tournament.url = settings.link;
@@ -597,6 +606,26 @@ function handleBtsReconnect(req, res) {
   });
 }
 
+function handleDisplay(req, res) {
+  if (!requireAdmin(req, res)) return;
+  readBody(req, (body) => {
+    let input = {};
+    try { input = JSON.parse(body) || {}; } catch (e) { /* leer */ }
+    const next = Object.assign({}, display);
+    for (const k of Object.keys(DISPLAY_DEFAULTS)) if (typeof input[k] === 'boolean') next[k] = input[k];
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(DISPLAY_FILE, JSON.stringify(next, null, 2));
+    } catch (e) {
+      return send(res, 500, JSON.stringify({ error: 'Speichern fehlgeschlagen: ' + e.message }));
+    }
+    display = next;
+    console.log('Anzeige geändert:', JSON.stringify(display));
+    changedFull();
+    send(res, 200, JSON.stringify({ ok: true, display }));
+  });
+}
+
 function handleTestMode(req, res) {
   if (!requireAdmin(req, res)) return;
   readBody(req, (body) => {
@@ -626,6 +655,7 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && pathname === '/api/admin-password') return handleAdminPassword(req, res);
   if (req.method === 'POST' && pathname === '/api/ticker-password') return handleTickerPassword(req, res);
   if (req.method === 'POST' && pathname === '/api/testmode') return handleTestMode(req, res);
+  if (req.method === 'POST' && pathname === '/api/display') return handleDisplay(req, res);
   if (req.method === 'POST' && pathname === '/api/bts-reconnect') return handleBtsReconnect(req, res);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, '{"error":"method"}');
   if (pathname === '/api/state') return send(res, 200, stateJson);

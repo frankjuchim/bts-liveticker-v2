@@ -115,6 +115,7 @@
   // Kleine Flagge vor dem Namen (nur in der Karten-Ansicht und den Listen, nicht auf dem
   // Spielfeld) – und nur, wenn im Turnier mehr als eine Nation vorkommt
   var flagsOn = false;
+  var flagsField = false;   // Flaggen auf den Spielfeldern
   function addFlag(span, m, side, name) {
     if (!flagsOn) return span;
     var i = (m[side] || []).indexOf(name);
@@ -371,7 +372,9 @@
 
   function render(state) {
     last = state;
-    flagsOn = Nations.useful(state);
+    var disp = (state && state.display) || {};
+    flagsOn = disp.flagsCards !== false && Nations.useful(state);
+    flagsField = disp.flagsField !== false && Nations.useful(state);
     sched = Schedule.compute(state);
     renderFollow(state);
     Follow.check(state);
@@ -417,7 +420,7 @@
       var m = BL.match(state, c.match);
       if (!m && (!showIdle.checked || term)) return;
       if (m && !matches(m, term)) return;
-      cards.push(m && mode === 'field' ? Field.render(m, { court: c.num, short: true, link: true }) : nowCard(state, c));
+      cards.push(m && mode === 'field' ? Field.render(m, { court: c.num, short: true, link: true, flags: flagsField }) : nowCard(state, c));
     });
     // Spielfelder sind zwischengespeichert: nur austauschen, was sich geändert hat
     // (neu eingehängte Elemente würden ihre Animation wiederholen)

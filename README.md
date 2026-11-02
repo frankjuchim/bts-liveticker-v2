@@ -245,7 +245,7 @@ zusätzliche Daten mitschicken, die es ohnehin kennt:
 | „Als Nächstes“: Spiele in Vorbereitung und angesetzte Spiele | – | ✓ |
 | Verzug zum Zeitplan und voraussichtlicher Beginn (Schätzung) | – | ✓ |
 | Turnierbäume und Gruppen (`/baum`) | – | ✓ (ab v3) |
-| Flaggen der Nationen auf den Karten (wenn mehr als eine Nation mitspielt) | – | ✓ (ab v4) |
+| Flaggen der Nationen auf Karten und Spielfeldern (wenn mehr als eine Nation mitspielt, im Admin-Panel abschaltbar) | – | ✓ (ab v4) |
 
 Geändert wird nur die Datei `bts/ticker_conn.js` (die Ticker-Anbindung): BTS schickt
 zusätzliche Felder mit, Bedienung, Datenbank und alle anderen Funktionen von BTS bleiben

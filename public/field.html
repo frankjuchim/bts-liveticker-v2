@@ -27,6 +27,7 @@
   <div id="stage"></div>
 </main>
 <script src="/live.js"></script>
+<script src="/nations.js"></script>
 <script src="/field.js"></script>
 <script>
   // /feld/1, /feld/2, … (alternativ ?court=1). ?names=full für volle Vornamen,
@@ -50,6 +51,10 @@
   var stage = document.getElementById('stage');
   var last = null;
 
+  function flagsOn(state) {
+    return !(state && state.display && state.display.flagsField === false) && Nations.useful(state);
+  }
+
   function render(state) {
     last = state;
     var m = BL.courtMatch(state, BL.court(state, nr), linger);
@@ -58,7 +63,7 @@
       // ohne BTS-Erweiterung gibt es keine Positionen und keinen Aufschlag
       node = BL.el('div', 'idle', 'Die Spielfeld-Ansicht ist nur verfügbar, wenn BTS die Erweiterung für Aufschläger/Rückschläger hat.');
     } else if (m) {
-      node = Field.render(m, { court: nr, short: p.get('names') !== 'full' });
+      node = Field.render(m, { court: nr, short: p.get('names') !== 'full', flags: flagsOn(state) });
     } else {
       node = BL.el('div', 'idle', 'Court ' + nr + ' – gerade kein Spiel');
     }

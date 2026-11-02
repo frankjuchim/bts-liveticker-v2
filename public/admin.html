@@ -272,6 +272,17 @@
     <div id="resetMsg"></div>
   </section>
 
+  <h2 id="dispSection">Flaggen</h2>
+  <section class="panel">
+    <label class="toggle" style="color:var(--text)"><input type="checkbox" id="flagsCards" checked> Flaggen der Nationen auf den <b>Karten</b>
+      und in den Listen (Liveticker)</label>
+    <label class="toggle" style="color:var(--text);margin-top:6px"><input type="checkbox" id="flagsField" checked> Flaggen auf den
+      <b>Spielfeldern</b> (Spielfeld-Ansicht, <code>/feld</code>, <code>/felder</code>)</label>
+    <p class="muted" style="margin-bottom:0;font-size:0.9rem">Flaggen erscheinen nur, wenn im Turnier mehr als eine Nation
+      mitspielt, und brauchen die BTS-Erweiterung v4 (bei Spielern ohne Verein auch ältere).</p>
+    <div id="dispMsg" style="margin-top:8px"></div>
+  </section>
+
   <h2 id="testSection">Testmodus</h2>
   <section class="panel">
     <label class="toggle" style="color:var(--text)"><input type="checkbox" id="testMode"> Testmodus einschalten</label>
@@ -366,6 +377,11 @@
     var courts = (state && state.courts) || [];
     var all = (state && state.matches) || [];
     checkReconnect(state);
+    var disp = (state && state.display) || {};
+    if (!dispSaving) {
+      document.getElementById('flagsCards').checked = disp.flagsCards !== false;
+      document.getElementById('flagsField').checked = disp.flagsField !== false;
+    }
     var tm = !!(state && state.testMode);
     document.getElementById('testMode').checked = tm;
     document.querySelectorAll('.diag').forEach(function (e) { e.hidden = !tm; });
@@ -728,6 +744,24 @@
     msg.textContent = 'BTS ist wieder verbunden ✓';
     msg.className = 'ok';
   }
+
+  // ---- Flaggen an/aus
+  var dispSaving = false;
+  ['flagsCards', 'flagsField'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', function () {
+      var box = this;
+      var msg = document.getElementById('dispMsg');
+      var payload = {};
+      payload[id] = box.checked;
+      dispSaving = true;
+      post('/api/display', payload).then(function (x) {
+        dispSaving = false;
+        if (!x.ok) { box.checked = !box.checked; msg.textContent = x.d.error || 'Fehler'; msg.className = 'bad'; return; }
+        msg.textContent = 'Gespeichert – gilt sofort für alle offenen Seiten.';
+        msg.className = 'ok';
+      }).catch(function () { dispSaving = false; box.checked = !box.checked; msg.textContent = 'Fehler beim Senden.'; msg.className = 'bad'; });
+    });
+  });
 
   // ---- Testmodus
   document.getElementById('testMode').addEventListener('change', function () {

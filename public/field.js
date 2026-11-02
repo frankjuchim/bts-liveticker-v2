@@ -101,6 +101,9 @@
         var p = spot(onLeft(m, side), places ? places[i] : null, i, list.length);
         spots[side][i] = p;
         var lab = el('div', 'fp ' + side, opts.short ? BL.shortName(name) : name);
+        // Flagge der Nation (opts.flags, nur wenn die Seite nations.js lädt)
+        var nat = opts.flags && window.Nations && Nations.flag(((side === 'home' ? m.homeNations : m.awayNations) || [])[i]);
+        if (nat) lab.insertBefore(nat, lab.firstChild);
         lab.style.left = (p.x / W * 100) + '%';
         lab.style.top = (p.y / H * 100) + '%';
         if (sv && sv.server.side === side && sv.server.player === i) lab.classList.add('srv');
@@ -195,7 +198,7 @@
   var cache = {};
   function render(m, opts) {
     opts = opts || {};
-    var id = (opts.court || '') + '|' + m.id;
+    var id = (opts.court || '') + '|' + m.id + (opts.flags ? '|f' : '');
     opts.uid = String(opts.court || m.id).replace(/[^\w-]/g, '');
     var prev = cache[id];
     if (prev && prev.key === key(m)) return prev.el;
