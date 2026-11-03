@@ -62,11 +62,11 @@
     return (m.homeClubs || []).concat(m.awayClubs || []).some(hasClub);
   }
 
-  // Name als antippbares Element: Tippen = folgen / nicht mehr folgen
+  // Name als Element zum Folgen: lange drücken = folgen / nicht mehr folgen
   function nameEl(tag, cls, name, text) {
     var e = el(tag, (cls ? cls + ' ' : '') + 'pname' + (has(name) ? ' fav' : ''), text || name);
     e.dataset.name = name;
-    e.title = has(name) ? 'Nicht mehr folgen' : 'Diesem Spieler folgen';
+    e.title = has(name) ? 'Lange drücken: nicht mehr folgen' : 'Lange drücken: diesem Spieler folgen';
     return e;
   }
 
@@ -150,13 +150,79 @@
     Notification.requestPermission().then(cb, function () { cb('denied'); });
   }
 
-  // Tippen auf einen Namen (überall auf der Seite) folgt dem Spieler
+  // Namen lange drücken (ca. 0,6 s, überall auf der Seite) = folgen / nicht mehr folgen.
+  // Kurzes Antippen ändert nichts – so wird niemand versehentlich markiert. Während des
+  // Drückens füllt sich der Name sichtbar; danach kurze Bestätigung (und Vibration).
+  var HOLD_MS = 600;
+  var press = null;       // { t: Element, timer, x, y }
+  var swallowClick = false;
+  var hintShown = 0;
+
+  function quick(title, body, ms) {
+    var box = document.getElementById('toasts');
+    if (!box) {
+      box = el('div', 'toasts');
+      box.id = 'toasts';
+      document.body.appendChild(box);
+    }
+    Array.prototype.forEach.call(box.querySelectorAll('.toast.quick'), function (x) { x.remove(); });
+    var t = el('div', 'toast quick');
+    t.appendChild(el('b', null, title));
+    if (body) t.appendChild(el('span', null, body));
+    t.addEventListener('click', function () { t.remove(); });
+    box.appendChild(t);
+    setTimeout(function () { t.classList.add('out'); }, ms || 2200);
+    setTimeout(function () { t.remove(); }, (ms || 2200) + 600);
+  }
+
+  function endPress() {
+    if (!press) return;
+    clearTimeout(press.timer);
+    press.t.classList.remove('pressing');
+    press = null;
+  }
+
+  document.addEventListener('pointerdown', function (e) {
+    if (e.button !== 0) return;
+    var t = e.target.closest && e.target.closest('.pname');
+    if (!t || !t.dataset.name) return;
+    endPress();
+    t.classList.add('pressing');
+    press = {
+      t: t, x: e.clientX, y: e.clientY,
+      timer: setTimeout(function () {
+        var name = t.dataset.name;
+        endPress();
+        swallowClick = true;
+        setTimeout(function () { swallowClick = false; }, 800);
+        toggle(name);
+        if (navigator.vibrate) { try { navigator.vibrate(30); } catch (err) { /* egal */ } }
+        if (has(name)) quick('★ Du folgst jetzt ' + name, 'Die Spiele stehen jetzt unter „Meine Spieler“.');
+        else quick(name + ' nicht mehr gefolgt', '');
+      }, HOLD_MS),
+    };
+  });
+  document.addEventListener('pointermove', function (e) {
+    if (press && (Math.abs(e.clientX - press.x) > 10 || Math.abs(e.clientY - press.y) > 10)) endPress();
+  });
+  ['pointerup', 'pointercancel', 'scroll'].forEach(function (ev) {
+    document.addEventListener(ev, endPress, true);
+  });
+  // Kein Kontextmenü / keine Textauswahl beim langen Drücken auf einen Namen
+  document.addEventListener('contextmenu', function (e) {
+    if (e.target.closest && e.target.closest('.pname')) e.preventDefault();
+  });
   document.addEventListener('click', function (e) {
     var t = e.target.closest && e.target.closest('.pname');
     if (!t) return;
-    e.preventDefault();
-    toggle(t.dataset.name);
-  });
+    if (swallowClick) { e.preventDefault(); e.stopPropagation(); swallowClick = false; return; }
+    // Kurzes Antippen: Hinweis, wie es geht (ein paar Mal, dann nicht mehr)
+    if (t.closest('a')) return;
+    if (hintShown < 2) {
+      hintShown++;
+      quick('Namen lange drücken', 'um ' + t.dataset.name + (has(t.dataset.name) ? ' nicht mehr zu folgen.' : ' zu folgen.'), 2500);
+    }
+  }, true);
 
   window.Follow = {
     list: function () { return list.slice(); },

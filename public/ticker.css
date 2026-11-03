@@ -126,6 +126,7 @@ h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; colo
 .more { display: block; margin: 12px auto 0; font: inherit; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
 
 .foot { margin: 24px 0 8px; text-align: center; font-size: 0.85rem; }
+.foot .tip { margin: 0 0 6px; }
 .conn.ok { color: var(--muted); }
 .conn.warn { color: var(--live); }
 
@@ -233,8 +234,10 @@ a.court:hover { text-decoration: underline; }
 .viewswitch button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ---- Spielern folgen (follow.js) ---- */
-.pname { cursor: pointer; }
+.pname { cursor: pointer; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+  background: linear-gradient(rgba(245,184,0,0.35), rgba(245,184,0,0.35)) no-repeat left bottom / 0% 100%; border-radius: 3px; }
 .pname:hover { text-decoration: underline dotted; text-underline-offset: 3px; }
+.pname.pressing { background-size: 100% 100%; transition: background-size 0.6s linear; }
 .pname.fav::before { content: "★ "; color: #f5b800; }
 /* Aufschläger und gefolgt: Punkt vorne, Stern hinten */
 .pname.fav.srv::before { content: ""; color: inherit; }

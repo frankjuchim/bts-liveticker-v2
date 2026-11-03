@@ -6,7 +6,7 @@
 
 - Liveticker für Zuschauer: alle Courts mit Spielstand, Ergebnisliste, Suche nach Spieler/Disziplin
 - Transparente Overlays für den Stream, einzeln pro Court oder mehrere Courts auf einmal
-- **Spielern und Vereinen folgen:** antippen, oben „Meine Spieler“, Hinweise bei Aufruf,
+- **Spielern und Vereinen folgen:** Namen lange drücken oder Stern antippen, oben „Meine Spieler“, Hinweise bei Aufruf,
   „Gleich dran“ und Spielende; eigene Seite `/spieler` mit allen Spielern, Vereinen und Statistik
 - **Ergebnis-Einblendung** für den Stream (Bauchbinde bei Spielende oder Laufband)
 - Mit einer kleinen [BTS-Erweiterung](docs/BTS-UPGRADE.md), die **auf der BTS-Maschine**
@@ -332,7 +332,7 @@ Spiel aufgerufen, aber noch ohne Punkte.
 
 ### Spielern folgen
 
-Im Liveticker auf einen **Namen tippen** (oder oben „Spieler hinzufügen“) – der Spieler steht
+Im Liveticker einen **Namen lange drücken** (ca. 0,6 s – kurzes Antippen ändert nichts; oder oben „Spieler hinzufügen“) – der Spieler steht
 dann mit Stern unter **„Meine Spieler“**: laufendes Spiel, als Nächstes (mit Erweiterung) und
 zuletzt gespielt; seine Karten sind gelb umrandet. Auf `/spieler` lassen sich auch ganze
 **Vereine** folgen. Die Liste bleibt im Browser gespeichert (kein Konto, nichts auf dem Server).
