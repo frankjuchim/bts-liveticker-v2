@@ -379,7 +379,9 @@
       dl.replaceChildren.apply(dl, opts.map(function (n) { var o = el('option'); o.value = n; return o; }));
     }
     var nb = document.getElementById('fbNotify');
-    nb.hidden = !any || !('Notification' in window) || Notification.permission !== 'default';
+    // iPhone/iPad im Safari-Tab: dort gibt es keine Benachrichtigungen – Knopf führt zur Handy-Seite /app
+    var iosTab = !('Notification' in window) && /iPhone|iPad|iPod/.test(navigator.userAgent);
+    nb.hidden = !any || (!iosTab && (!('Notification' in window) || Notification.permission !== 'default'));
   }
 
   function render(state) {
@@ -555,6 +557,7 @@
   fbAdd.addEventListener('change', addFollow);
   fbAdd.addEventListener('keydown', function (e) { if (e.key === 'Enter') addFollow(); });
   document.getElementById('fbNotify').addEventListener('click', function () {
+    if (!('Notification' in window)) { location.href = '/app'; return; }
     Follow.askNotify(function () { rerender(); });
   });
   setInterval(updateConn, 5000);

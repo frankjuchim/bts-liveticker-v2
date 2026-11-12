@@ -105,38 +105,60 @@
   function current() {
     return reg ? reg.pushManager.getSubscription() : Promise.resolve(null);
   }
+  // Warum es hier (noch) nicht geht – wird beim Antippen des Knopfs angezeigt
+  function whyNot() {
+    if (!window.isSecureContext) return 'Benachrichtigungen brauchen eine sichere Verbindung (https://). Hinweise erscheinen trotzdem, solange diese Seite offen ist.';
+    if (ios && !standalone) return 'Auf dem iPhone/iPad geht das nur als App vom Home-Bildschirm: auf „Teilen“ tippen (Quadrat mit Pfeil nach oben) → „Zum Home-Bildschirm“ (dabei „Als Web-App öffnen“ eingeschaltet lassen) → die App dann vom Home-Bildschirm öffnen und hier „Einschalten“ tippen.';
+    if (ios) return 'Für Benachrichtigungen braucht das iPhone/iPad iOS 16.4 oder neuer. Hinweise erscheinen trotzdem, solange diese Seite offen ist.';
+    return 'Dieser Browser unterstützt keine Push-Benachrichtigungen. Hinweise erscheinen, solange diese Seite offen ist.';
+  }
+  var subscribed = false;
+  var ready = null;
   if (!canPush) {
-    pushBtn.disabled = true;
-    if (!window.isSecureContext) hint('Benachrichtigungen brauchen eine sichere Verbindung (https://). Hinweise erscheinen trotzdem, solange diese Seite offen ist.');
-    else if (ios && !standalone) hint('Auf dem iPhone/iPad: unten auf „Teilen“ → „Zum Home-Bildschirm“, dann die App vom Startbildschirm öffnen und hier einschalten.');
-    else hint('Dieser Browser unterstützt keine Push-Benachrichtigungen. Hinweise erscheinen, solange diese Seite offen ist.');
+    pushBtn.classList.add('off');
+    if (ios && !standalone) hint('Auf dem iPhone/iPad erst zum Home-Bildschirm hinzufügen – „Einschalten“ antippen zeigt, wie.');
   } else {
-    navigator.serviceWorker.register('/sw.js').then(function (r) {
+    ready = navigator.serviceWorker.register('/sw.js').then(function (r) {
       reg = r;
       return current();
     }).then(function (sub) {
-      showPush(!!sub);
+      subscribed = !!sub;
+      showPush(subscribed);
       if (sub) sendFollow(sub);   // Folgen-Liste auf dem Server aktuell halten
     }).catch(function () { hint('Benachrichtigungen konnten nicht vorbereitet werden.'); });
   }
   pushBtn.addEventListener('click', function () {
-    if (!reg) return;
+    if (!canPush) { hint(whyNot()); pushHint.classList.add('app-warn'); return; }
     pushBtn.disabled = true;
-    current().then(function (sub) {
-      if (sub) {
-        return sub.unsubscribe().then(function () { return post('/api/push/unsubscribe', { endpoint: sub.endpoint }); })
-          .then(function () { showPush(false); hint(''); });
+    var done = function () { pushBtn.disabled = false; };
+    var fail = function (e) { hint('Einschalten hat nicht geklappt: ' + (e && e.message || e)); done(); };
+    if (subscribed) {
+      (ready || Promise.resolve()).then(current).then(function (sub) {
+        if (!sub) return;
+        return sub.unsubscribe().then(function () { return post('/api/push/unsubscribe', { endpoint: sub.endpoint }); });
+      }).then(function () { subscribed = false; showPush(false); hint(''); done(); }, fail);
+      return;
+    }
+    // Erlaubnis direkt beim Antippen anfragen – Safari (iOS) fragt sonst gar nicht erst
+    var perm;
+    try { perm = Notification.requestPermission(); } catch (e) { perm = null; }
+    Promise.resolve(perm).then(function (p) {
+      p = p || Notification.permission;
+      if (p !== 'granted') {
+        hint(ios ? 'Benachrichtigungen sind blockiert – in den iPhone-Einstellungen → Mitteilungen → diese App erlauben.'
+          : 'Benachrichtigungen sind im Browser blockiert – in den Website-Einstellungen erlauben.');
+        return done();
       }
-      return Notification.requestPermission().then(function (perm) {
-        if (perm !== 'granted') { hint('Benachrichtigungen sind im Browser blockiert – in den Website-Einstellungen erlauben.'); return; }
-        return fetch('/api/push/key').then(function (r) { return r.json(); }).then(function (k) {
-          return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(k.key) });
-        }).then(function (s) {
-          return sendFollow(s).then(function () { showPush(true); hint(''); });
-        });
+      return (ready || Promise.resolve()).then(function () {
+        if (!reg) return navigator.serviceWorker.ready.then(function (r) { reg = r; });
+      }).then(function () {
+        return fetch('/api/push/key').then(function (r) { return r.json(); });
+      }).then(function (k) {
+        return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(k.key) });
+      }).then(function (s) {
+        return sendFollow(s).then(function () { subscribed = true; showPush(true); hint(''); done(); });
       });
-    }).catch(function (e) { hint('Einschalten hat nicht geklappt: ' + (e && e.message || e)); })
-      .then(function () { pushBtn.disabled = false; });
+    }).catch(fail);
   });
   Follow.onChange(function () {
     current().then(function (sub) { if (sub) sendFollow(sub).then(function () { showPush(true); }); });

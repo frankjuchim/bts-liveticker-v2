@@ -432,6 +432,7 @@ body.app .app-wrap { max-width: 640px; padding-bottom: calc(16px + env(safe-area
 .app-card { background: var(--card); border-radius: 12px; padding: 10px 12px; margin-top: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 .app-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .app-small { font-size: 0.8rem; }
+.app-warn { color: #3a2f00; background: #fff4cc; border-left: 4px solid #f5b800; border-radius: 6px; padding: 8px 10px; }
 .app-btn { font: inherit; font-weight: 700; padding: 8px 14px; border: 0; border-radius: 999px; background: var(--club); color: #fff; cursor: pointer; white-space: nowrap; }
 .app-btn.off { background: var(--bg); color: var(--text); border: 1px solid var(--line); }
 .app-btn:disabled { opacity: 0.5; }
