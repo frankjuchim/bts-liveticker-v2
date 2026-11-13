@@ -3,8 +3,8 @@
 // Simuliert BTS: verbindet sich wie bts/ticker_conn.js mit dem Liveticker und
 // spielt auf mehreren Courts Spiele durch.
 //   node tools/fake-bts.js ws://localhost:8080/ws/update test [courts] [ms pro Punkt]
-// Standard: BTS mit Erweiterung v5 (Aufschlag, Vereine, Nationen, Spieldauer, nächste Spiele,
-// Turnierbäume). EXT=4/EXT=3/EXT=2/EXT=1 ältere Versionen, NO_EXT=1 ohne Erweiterung.
+// Standard: BTS mit Erweiterung v4 (Aufschlag, Vereine, Nationen, Spieldauer, nächste Spiele,
+// Turnierbäume). EXT=3/EXT=2/EXT=1 ältere Versionen, NO_EXT=1 ohne Erweiterung.
 
 const WebSocket = require('ws');
 
@@ -216,7 +216,7 @@ const pushall = () => {
       V2 || V3 ? {} : { n0: m.n0, n1: m.n1 }));
   }
   if (!NO_EXT && !V1 && !V2) {
-    event.xv = V3 ? 3 : (process.env.EXT === '4' ? 4 : 5);
+    event.xv = V3 ? 3 : 4;
     event.draws = DRAWS;
   }
   send({ type: 'tset', event });

@@ -1,6 +1,6 @@
 'use strict';
 
-// Erweitert bts/ticker_conn.js von BTS für den Liveticker (bts-liveticker-v2), Version 5.
+// Erweitert bts/ticker_conn.js von BTS für den Liveticker (bts-liveticker-v2), Version 4.
 // Funktioniert mit älteren und neueren BTS-Versionen, weil nur an festen
 // Ankerstellen eingefügt wird:
 //   node ticker-aufschlag.js bts/ticker_conn.js
@@ -17,17 +17,12 @@
 //   draws = alle Spiele aller Felder mit Verknüpfungen         tset
 //           (für die Turnierbäume), xv = Version der Erweiterung
 //
-// Ab v5 schaut die Erweiterung alle 3 Sekunden nach, ob sich an Courts oder Spielen
-// etwas geändert hat (Spiel auf einen Court gezogen/aufgerufen/entfernt, Planung,
-// Spieler, Ergebnis), und schickt dann den Gesamtstand (tset) – sonst kam der erst
-// mit dem nächsten Punkt vom Tablet.
-//
 // Die Datei muss im Originalzustand sein; apply.sh stellt sie bei einem Upgrade
 // von einer älteren Version der Erweiterung vorher wieder her.
 
 const fs = require('fs');
 
-const VERSION = 5;
+const VERSION = 4;
 const MARKER = 'bts-liveticker-erweiterung v' + VERSION;
 const file = process.argv[2] || 'bts/ticker_conn.js';
 let src = fs.readFileSync(file, 'utf8');
@@ -128,40 +123,6 @@ const HELPERS = [
   '\t});',
   '}',
   '',
-  '// Änderungen an Courts und Spielen erkennen, die BTS dem Ticker nicht selbst meldet',
-  '// (z. B. Spiel auf einen Court gezogen): alle 3 s vergleichen, bei Änderung tset senden',
-  'const LIVETICKER_WATCH_MS = 3000;',
-  'function liveticker_watch(tc) {',
-  "\tif (!tc.app || !tc.app.db || !tc.app.db.courts || !tc.app.db.matches) return;",
-  '\tlet last = null;',
-  '\tlet busy = false;',
-  '\tconst timer = setInterval(() => {',
-  '\t\tif (tc.terminated) { clearInterval(timer); return; }',
-  '\t\tif (busy || !tc.ws || tc.ws.readyState !== 1) { if (!tc.ws) last = null; return; }',
-  '\t\tbusy = true;',
-  '\t\tconst tournament_key = tc.tournament_key;',
-  '\t\ttc.app.db.courts.find({ tournament_key }, (err, courts) => {',
-  '\t\t\tif (err || !Array.isArray(courts)) { busy = false; return; }',
-  '\t\t\ttc.app.db.matches.find({ tournament_key }, (err2, matches) => {',
-  '\t\t\t\tbusy = false;',
-  '\t\t\t\tif (err2 || !Array.isArray(matches)) return;',
-  "\t\t\t\tconst pn = t => ((t && t.players) || []).map(p => (p && p.name) || '').join('/');",
-  '\t\t\t\tconst sig = JSON.stringify([',
-  "\t\t\t\t\tcourts.map(c => [c._id, c.num, c.match_id || null]).sort(),",
-  '\t\t\t\t\tmatches.map(m => {',
-  '\t\t\t\t\t\tconst s = m.setup || {};',
-  "\t\t\t\t\t\treturn [m._id, s.state || null, s.court_id || null, !!s.now_on_court, s.scheduled_time_str || null, s.scheduled_date || null,",
-  "\t\t\t\t\t\t\t(s.teams || []).map(pn).join('|'), typeof m.team1_won === 'boolean' ? m.team1_won : null, m.end_ts || null];",
-  '\t\t\t\t\t}).sort(),',
-  '\t\t\t\t]);',
-  '\t\t\t\tif (last !== null && sig !== last) tc.pushall();',
-  '\t\t\t\tlast = sig;',
-  '\t\t\t});',
-  '\t\t});',
-  '\t}, LIVETICKER_WATCH_MS);',
-  "\tif (timer.unref) timer.unref();",
-  '}',
-  '',
 ].join('\n');
 
 once(/^function craft_match\(m\) \{/m, HELPERS + 'function craft_match(m) {', 'function craft_match');
@@ -188,12 +149,6 @@ once(/^([ \t]*)this\.sendmsg\(\{(\r?\n)[ \t]*type: 'tset',\r?\n[ \t]*event,\r?\n
   `${ind}\t});`,
   `${ind}});`,
 ].join(nl), 'sendmsg tset (pushall)');
-
-// Wächter beim Anlegen der Verbindung starten (Konstruktor von TickerConn)
-once(/^([ \t]*)this\.connect\(\);(\r?\n)/m, (all, ind, nl) => [
-  `${ind}this.connect();`,
-  `${ind}liveticker_watch(this);`,
-].join(nl) + nl, 'this.connect() (constructor)');
 
 fs.writeFileSync(file, src);
 console.log('erweitert (v' + VERSION + '): ' + file);
