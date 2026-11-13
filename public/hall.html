@@ -100,7 +100,7 @@
   function nameLine(m, side) {
     var d = el('div');
     var list = (m[side] || []).filter(Boolean);
-    if (!list.length) d.textContent = 'N. N.';
+    if (!list.length) d.textContent = m[side + 'Tbd'] || 'N. N.';
     var flags = flagsOn('flagsCards');
     list.forEach(function (n, i) {
       if (i) d.appendChild(document.createTextNode(' / '));

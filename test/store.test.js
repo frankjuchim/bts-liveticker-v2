@@ -409,3 +409,29 @@ test('Ergebnisse aus den Feldern: auch nicht live gesehene Spiele', () => {
   const r = store.view(s2).matches.find((m) => m.id === 'k2');
   assert.ok(r.finishedAt);
 });
+
+test('Als Nächstes: angesetzte Spiele mit offener Seite aus den Feldern, mit Platzhalter', () => {
+  const s = store.emptyStore();
+  const dm = (id, pl, extra) => Object.assign({
+    _id: id, di: 7, dn: 'HE O19', en: 'HE O19', sn: 'Hauptfeld', r: 'HF', mn: Number(id.slice(1)), pl,
+    p0: ['A'], p1: ['B'], c0: ['X'], c1: ['Y'], s: null, w: null, st: 'scheduled', t: '12:00',
+  }, extra);
+  store.applyTset(s, {
+    xv: 4, courts: [{ _id: 'c1', num: 1, match_id: 'm1' }],
+    matches: [{ _id: 'm1', n: 'HE O19 HF', p0: ['A'], p1: ['B'], s: [[3, 2]] }],
+    upcoming: [{ _id: 'm9', n: 'HE O19 Spiel', p0: ['C'], p1: ['D'], t: '11:00', st: 'scheduled', mn: 9 }],
+    draws: [
+      dm('m1', 5, { f1: 1, f2: 2, wt: 7 }),
+      dm('m2', 6, { f1: 3, f2: 4, wt: 7, lt: 8, s: [[21, 10], [21, 0]], w: true, st: 'finished' }),
+      dm('m3', 7, { r: 'Finale', f1: 5, f2: 6, p0: [], p1: ['A'], st: 'incomplete', t: '14:00' }),
+      dm('m4', 8, { r: 'Platz 3', f1: 5, f2: 6, p0: [], p1: [], st: 'incomplete', t: null }),
+    ],
+  }, '2026-11-14T10:00:00.000Z');
+  const up = store.view(s).upcoming;
+  assert.deepStrictEqual(up.map((u) => u.id), ['m9', 'm3']);   // m4 ohne Zeit nicht
+  const f = up[1];
+  assert.strictEqual(f.homeTbd, 'Sieger Spiel 1');
+  assert.strictEqual(f.awayTbd, null);
+  assert.deepStrictEqual(f.away, ['A']);
+  assert.strictEqual(f.name, 'HE O19 Finale');
+});

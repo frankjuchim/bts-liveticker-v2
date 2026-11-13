@@ -268,7 +268,7 @@
     ['home', 'away'].forEach(function (side, i) {
       var t = el('div', 'up-team');
       var names = BL.players(u[side]);
-      if (!names.length) t.appendChild(el('span', 'muted', 'N. N.'));
+      if (!names.length) t.appendChild(el('span', 'muted', u[side + 'Tbd'] || 'N. N.'));
       names.forEach(function (n, j) {
         if (j) t.appendChild(document.createTextNode(' / '));
         t.appendChild(addFlag(Follow.nameEl('span', null, n), u, side, n));

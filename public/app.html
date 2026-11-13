@@ -204,7 +204,7 @@
     ['home', 'away'].forEach(function (side, k) {
       if (k) line.appendChild(el('span', 'muted', ' – '));
       var names = BL.players(m[side], true);
-      if (!names.length) line.appendChild(el('span', 'muted', 'N. N.'));
+      if (!names.length) line.appendChild(el('span', 'muted', m[side + 'Tbd'] || 'N. N.'));
       names.forEach(function (n, i) {
         if (i) line.appendChild(document.createTextNode(' / '));
         var full = (m[side] || []).filter(Boolean)[i];
