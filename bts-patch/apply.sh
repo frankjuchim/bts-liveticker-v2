@@ -10,8 +10,8 @@
 set -euo pipefail
 
 SCRIPT_URL="${SCRIPT_URL:-https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/bts-patch/ticker-aufschlag.js}"
-VERSION=4
-MESSAGE="Ticker-Erweiterung für bts-liveticker (v$VERSION): Aufschlag, Vereine, Nationen, Spieldauer, nächste Spiele, Turnierbäume"
+VERSION=4.1
+MESSAGE="Ticker-Erweiterung für bts-liveticker (v$VERSION): Aufschlag, Vereine, Nationen, Spieldauer, nächste Spiele, Turnierbäume, Courts sofort"
 
 [ -f bts/ticker_conn.js ] || { echo "Hier liegt kein BTS (bts/ticker_conn.js fehlt). Bitte ins BTS-Verzeichnis wechseln." >&2; exit 1; }
 git rev-parse --git-dir >/dev/null 2>&1 || { echo "Das BTS-Verzeichnis ist kein git-Repository – siehe docs/BTS-UPGRADE.md (manuell)." >&2; exit 1; }

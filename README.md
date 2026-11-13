@@ -246,6 +246,7 @@ zusätzliche Daten mitschicken, die es ohnehin kennt:
 | Verzug zum Zeitplan und voraussichtlicher Beginn (Schätzung) | – | ✓ |
 | Turnierbäume und Gruppen (`/baum`) | – | ✓ (ab v3) |
 | Flaggen der Nationen auf Karten, Spielfeldern und in den Turnierbäumen (wenn mehr als eine Nation mitspielt, im Admin-Panel abschaltbar) | – | ✓ (ab v4) |
+| Spiel in BTS auf einen Court gezogen/aufgerufen, Planung geändert: nach wenigen Sekunden im Ticker (nicht erst, wenn das Tablet startet) | – | ✓ (ab v4.1) |
 
 Geändert wird nur die Datei `bts/ticker_conn.js` (die Ticker-Anbindung): BTS schickt
 zusätzliche Felder mit, Bedienung, Datenbank und alle anderen Funktionen von BTS bleiben

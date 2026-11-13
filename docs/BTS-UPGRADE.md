@@ -30,6 +30,7 @@ die ältere Version. Bis dahin läuft alles Bisherige weiter, nur die neuen Teil
 | Verzug zum Zeitplan und voraussichtlicher Beginn (Schätzung) | – | ✓ |
 | Turnierbäume und Gruppen (`/baum`) | – | ✓ (ab v3) |
 | Flaggen der Nationen auf Karten, Spielfeldern und in den Turnierbäumen (wenn mehr als eine Nation mitspielt, im Admin-Panel abschaltbar) | – | ✓ (ab v4) |
+| Spiel in BTS auf einen Court gezogen/aufgerufen, Planung geändert: nach wenigen Sekunden im Ticker (nicht erst, wenn das Tablet startet) | – | ✓ (ab v4.1) |
 
 Ohne Erweiterung funktioniert der Liveticker ganz normal, nur ohne diese Angaben (die
 Spieldauer schätzt er dann selbst vom ersten Punkt bis zum Spielende).
@@ -50,6 +51,12 @@ Nur die Datei `bts/ticker_conn.js` (gut 80 Zeilen). Zusätzlich gesendet werden:
 | `di` | Feld des Spiels (v3) | `setup.draw_id` | `tset` |
 | `draws` | alle Spiele aller Felder (v3): Feld, Runde, Spielnummer, Verknüpfungen `f1`/`f2`/`wt`/`lt`, Spieler, Vereine, Ergebnis, Gruppen-Platzierungen | `setup.draw_*`, `setup.links`, `btp_match_ids`, `network_score`, `team1_won`, `setup.btp_group_rankings` | `tset` |
 | `xv` | Version der Erweiterung (v3) | – | `tset` |
+
+Ab **v4.1** schaut die Erweiterung zusätzlich alle 3 Sekunden nach, ob sich an Courts oder Spielen
+etwas geändert hat (Spiel auf einen Court gezogen, aufgerufen oder entfernt, Planzeit, Spieler, Ergebnis),
+und schickt dann den Gesamtstand (`tset`). BTS selbst meldet das dem Ticker nur, wenn ein Tablet ein
+Spiel startet oder beendet. Ohne Änderung wird nichts gesendet. Der Ticker zeigt weiterhin „v4“ an;
+`apply.sh` bzw. `update-bts.sh` ersetzt eine v4 ohne diese Prüfung automatisch.
 
 „Als Nächstes“ enthält nur Spiele, die nicht auf einem Court liegen, noch kein Ergebnis haben
 und bei denen beide Seiten feststehen – zuerst die in Vorbereitung, dann nach Planzeit. Die
