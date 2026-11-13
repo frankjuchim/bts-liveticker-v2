@@ -6,7 +6,7 @@ BTS schickt sie einmal vollständig über die bestehende Ticker-Verbindung (`bts
 dann ist **keine Erweiterung (Patch) mehr nötig** und der Ticker deckt Turnierbäume, Gruppen,
 KO-Systeme, Zeitplan und Livestand ohne weitere BTS-Änderungen ab.
 
-Stand: Erweiterung v4 (`bts-patch/ticker-aufschlag.js`), geprüft gegen `tlehr/bts` Branch
+Stand: Erweiterung v5 (`bts-patch/ticker-aufschlag.js`), geprüft gegen `tlehr/bts` Branch
 `feat/BTSv2` (2. 11. 2026). Alles, was der Patch heute schickt, steht unten unter „heute“ – das
 kann 1:1 übernommen werden. Neu gewünscht ist mit **neu** markiert.
 
@@ -166,13 +166,40 @@ Eine Liste aller Spieler des Turniers vermeidet Doppelungen bei gleichen Namen:
 | Ereignis | Nachricht |
 | --- | --- |
 | Verbindung aufgebaut | `tset` (Gesamtstand inkl. `draws`, `upcoming`) |
-| Spiel kommt auf / verlässt einen Court, Aufruf | `tset` (wie heute über `pushall`) |
+| Spiel kommt auf / verlässt einen Court, Aufruf | `tset` – **neu:** auch wenn es im BTS-Admin auf den Court gezogen wird (siehe 8.1) |
 | Punkt, Aufschlag, Positionen | `tupdate_match` |
 | Ergebnis in BTP eingetragen / BTP-Sync ändert Felder | `tset` – oder neu `tdraws` (nur `draws`) |
 | Zeitplan in BTP geändert | `tset` (wegen `upcoming`, `t`/`dt`) |
 
 Für große Turniere optional: `tdraws` mit `{ version, draws }` nur, wenn sich an den Feldern etwas
 geändert hat, und `tset` dann ohne `draws`. Der Ticker unterstützt beides.
+
+### 8.1 Neu: Ticker auch bei Änderungen im BTS-Admin anstoßen
+
+Heute ruft BTS `ticker_manager.pushall` nur aus `bupws.js`/`bupws_v2.js` (Tablet startet ein Spiel,
+Spielende) und über den Ticker-Knopf auf. Wird ein Spiel im Admin auf einen Court gezogen, aufgerufen
+oder vom Court genommen, oder ändert der BTP-Sync die Planung, erfährt der Ticker das erst mit dem
+nächsten Punkt. Die Erweiterung v5 überbrückt das, indem sie alle 3 s nachschaut.
+
+Sauberer in BTS: an der zentralen Stelle `admin.notify_change` (alle Änderungen laufen dort durch)
+bei den passenden Arten gebündelt `pushall` auslösen, z. B.
+
+```js
+// bts/admin.js, in notify_change(app, tournament_key, ctype, val) – nach dem Sync-Effects-Block
+const TICKER_CTYPES = new Set(['match_edit', 'match_add', 'match_delete', 'court_changed', 'courts_changed',
+	'court_current_match', 'match_called_on_court', 'tournament_reset']);
+if (TICKER_CTYPES.has(ctype)) {
+	app._ticker_push_timers = app._ticker_push_timers || new Map();
+	clearTimeout(app._ticker_push_timers.get(tournament_key));
+	app._ticker_push_timers.set(tournament_key, setTimeout(() => {
+		app._ticker_push_timers.delete(tournament_key);
+		require('./ticker_manager').pushall(app, tournament_key);
+	}, 1000));   // mehrere Änderungen kurz hintereinander = ein tset
+}
+```
+
+Damit kommt jede Änderung nach ca. 1 s beim Ticker an; die 3-s-Prüfung der Erweiterung schadet dann
+nicht (sie sendet nur, wenn sich wirklich etwas geändert hat) und kann später entfallen.
 
 ## 9. Sonderfälle, die der Ticker abdecken soll
 

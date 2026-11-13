@@ -331,7 +331,7 @@ test('Erweiterung v3: Felder für die Turnierbäume', () => {
   }, '2026-11-14T10:00:00.000Z');
   const v = store.view(s);
   assert.strictEqual(v.btsExtVersion, 3);
-  assert.strictEqual(v.btsExtLatest, 4);
+  assert.strictEqual(v.btsExtLatest, 5);
   assert.ok(v.drawsVersion);
   assert.strictEqual(v.matches[0].drawId, '7');
   const d = store.drawsView(s).draws;

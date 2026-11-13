@@ -1,7 +1,7 @@
 # BTS-Erweiterung für den Liveticker
 
 Das unveränderte BTS schickt dem Ticker nur die Spiele auf den Courts mit ihrem Spielstand.
-Vieles mehr weiß BTS aber bereits. Diese Erweiterung (Version 4) schickt es mit, damit der
+Vieles mehr weiß BTS aber bereits. Diese Erweiterung (Version 5) schickt es mit, damit der
 Liveticker zusätzlich
 
 - beim **Aufschläger** einen Punkt zeigt und im **Doppel** den **Rückschläger** unterstreicht,
@@ -15,10 +15,10 @@ Liveticker zusätzlich
 - ab Version 3 die **Turnierbäume** zeigt (`/baum`): alle Spiele aller Felder aus BTP mit
   Verknüpfungen (Sieger/Verlierer geht in Spiel …), Ergebnissen und Gruppen-Platzierungen.
 
-Wer eine ältere Version (1 bis 3) eingespielt hat, führt denselben Befehl einfach noch einmal aus – er ersetzt
-die ältere Version. Bis dahin läuft alles Bisherige weiter, nur die neuen Teile fehlen (v3: Turnierbäume, v4: Flaggen).
+Wer eine ältere Version (1 bis 4) eingespielt hat, führt denselben Befehl einfach noch einmal aus – er ersetzt
+die ältere Version. Bis dahin läuft alles Bisherige weiter, nur die neuen Teile fehlen (v3: Turnierbäume, v4: Flaggen, v5: Spiel auf dem Court sofort im Ticker).
 
-| Funktion | ohne Erweiterung | mit Erweiterung v4 |
+| Funktion | ohne Erweiterung | mit Erweiterung v5 |
 | --- | --- | --- |
 | Spielstände, Ergebnisse, Overlays, Ergebnis-Einblendung | ✓ | ✓ |
 | Spielern folgen, Hinweise bei Aufruf und Spielende, Spielerseite | ✓ | ✓ |
@@ -30,6 +30,7 @@ die ältere Version. Bis dahin läuft alles Bisherige weiter, nur die neuen Teil
 | Verzug zum Zeitplan und voraussichtlicher Beginn (Schätzung) | – | ✓ |
 | Turnierbäume und Gruppen (`/baum`) | – | ✓ (ab v3) |
 | Flaggen der Nationen auf Karten, Spielfeldern und in den Turnierbäumen (wenn mehr als eine Nation mitspielt, im Admin-Panel abschaltbar) | – | ✓ (ab v4) |
+| Spiel auf einen Court gezogen/aufgerufen, Planung geändert: nach wenigen Sekunden im Ticker (nicht erst mit dem nächsten Punkt) | – | ✓ (ab v5) |
 
 Ohne Erweiterung funktioniert der Liveticker ganz normal, nur ohne diese Angaben (die
 Spieldauer schätzt er dann selbst vom ersten Punkt bis zum Spielende).
@@ -50,6 +51,11 @@ Nur die Datei `bts/ticker_conn.js` (gut 80 Zeilen). Zusätzlich gesendet werden:
 | `di` | Feld des Spiels (v3) | `setup.draw_id` | `tset` |
 | `draws` | alle Spiele aller Felder (v3): Feld, Runde, Spielnummer, Verknüpfungen `f1`/`f2`/`wt`/`lt`, Spieler, Vereine, Ergebnis, Gruppen-Platzierungen | `setup.draw_*`, `setup.links`, `btp_match_ids`, `network_score`, `team1_won`, `setup.btp_group_rankings` | `tset` |
 | `xv` | Version der Erweiterung (v3) | – | `tset` |
+
+Ab **v5** schaut die Erweiterung zusätzlich alle 3 Sekunden nach, ob sich an Courts oder Spielen
+etwas geändert hat (Spiel auf einen Court gezogen, aufgerufen oder entfernt, Planzeit, Spieler, Ergebnis),
+und schickt dann den Gesamtstand (`tset`). BTS selbst meldet solche Änderungen dem Ticker nicht –
+sonst erschienen sie erst mit dem nächsten Punkt vom Tablet. Ohne Änderung wird nichts gesendet.
 
 „Als Nächstes“ enthält nur Spiele, die nicht auf einem Court liegen, noch kein Ergebnis haben
 und bei denen beide Seiten feststehen – zuerst die in Vorbereitung, dann nach Planzeit. Die

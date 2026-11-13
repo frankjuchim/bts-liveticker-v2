@@ -136,10 +136,10 @@
       Ticker-Adresse <code class="wsUrl"></code> und Ticker-Passwort
       <code class="secret" id="tickerPw" title="Klicken zum Anzeigen">•••••••• (anzeigen)</code> eintragen
       (änderbar unter <a href="#tpwSection">„Ticker-Passwort für BTS“</a>).</p>
-    <p style="margin-bottom:0" id="extSetup"><b>2. Optional: BTS-Erweiterung (v4)</b> – der Liveticker funktioniert auch ohne sie.
+    <p style="margin-bottom:0" id="extSetup"><b>2. Optional: BTS-Erweiterung (v5)</b> – der Liveticker funktioniert auch ohne sie.
       Die Erweiterung lässt BTS ein paar zusätzliche Daten an den Ticker schicken:</p>
     <table class="ext-table">
-      <thead><tr><th></th><th>ohne Erweiterung</th><th>mit Erweiterung v4</th></tr></thead>
+      <thead><tr><th></th><th>ohne Erweiterung</th><th>mit Erweiterung v5</th></tr></thead>
       <tbody>
         <tr><th>Spielstände, Ergebnisse, Overlays, Ergebnis-Einblendung</th><td>✓</td><td>✓</td></tr>
         <tr><th>Spielern folgen, Hinweise bei Aufruf und Spielende, Spielerseite</th><td>✓</td><td>✓</td></tr>
@@ -151,6 +151,7 @@
         <tr><th>Verzug zum Zeitplan und voraussichtlicher Beginn (Schätzung)</th><td>–</td><td>✓</td></tr>
         <tr><th>Turnierbäume und Gruppen (<code>/baum</code>)</th><td>–</td><td>✓ (ab v3)</td></tr>
         <tr><th>Flaggen der Nationen auf den Karten (bei mehr als einer Nation)</th><td>–</td><td>✓ (ab v4)</td></tr>
+        <tr><th>Spiel auf einen Court gezogen oder aufgerufen: sofort im Ticker (nicht erst mit dem ersten Punkt)</th><td>–</td><td>✓ (ab v5)</td></tr>
       </tbody>
     </table>
     <p class="muted" style="font-size:0.88rem">Geändert wird nur die Datei <code>bts/ticker_conn.js</code> (die Ticker-Anbindung):
