@@ -291,7 +291,11 @@
       Ein neues Turnier in BTS (anderer Name) setzt die Liste automatisch zurück.</p>
     <form id="reset">
       <button type="submit">Ergebnisse löschen</button>
+      <button type="button" id="resetAll">Alles bereinigen</button>
     </form>
+    <p class="muted" style="font-size:0.88rem;margin-bottom:0"><b>Alles bereinigen</b> löscht zusätzlich Courts, Turnierbäume/Gruppen
+      (<code>/baum</code>), „Als Nächstes“ und Planzeiten. Der Ticker baut sie mit der nächsten Meldung von BTS frisch auf –
+      mit Erweiterung v4.1 nach wenigen Sekunden, sonst spätestens beim nächsten Spielstart. Die bisherigen Ergebnisse bleiben dabei ausgeblendet.</p>
     <div id="resetMsg"></div>
   </section>
 
@@ -720,6 +724,18 @@
     if (!confirm('Alle gespeicherten Ergebnisse löschen?')) return;
     post('/api/reset').then(function (x) {
       msg.textContent = x.ok ? 'Ergebnisse gelöscht.' : (x.d.error || 'Fehler');
+      msg.className = x.ok ? 'ok' : 'bad';
+    }).catch(function () {
+      msg.textContent = 'Fehler beim Senden.';
+      msg.className = 'bad';
+    });
+  });
+
+  document.getElementById('resetAll').addEventListener('click', function () {
+    var msg = document.getElementById('resetMsg');
+    if (!confirm('Alles bereinigen? Ergebnisse, Courts, Turnierbäume und „Als Nächstes“ werden gelöscht und von BTS neu aufgebaut.')) return;
+    post('/api/reset', { all: true }).then(function (x) {
+      msg.textContent = x.ok ? 'Bereinigt – der Ticker wird mit der nächsten Meldung von BTS neu aufgebaut.' : (x.d.error || 'Fehler');
       msg.className = x.ok ? 'ok' : 'bad';
     }).catch(function () {
       msg.textContent = 'Fehler beim Senden.';

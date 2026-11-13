@@ -530,11 +530,13 @@ function handleBrand(req, res) {
 // Ergebnisliste leeren (z. B. vor einem neuen Turniertag)
 function handleReset(req, res) {
   if (!requireAdmin(req, res)) return;
-  readBody(req, () => {
-    store.resetResults(data);
+  readBody(req, (body) => {
+    let input = {};
+    try { input = JSON.parse(body) || {}; } catch (e) { /* leer */ }
+    store.resetResults(data, input.all === true);
     data.updatedAt = new Date().toISOString();
     changedFull();
-    console.log('Ergebnisliste zurückgesetzt');
+    console.log(input.all === true ? 'Ticker bereinigt (Ergebnisse, Courts, Felder)' : 'Ergebnisliste zurückgesetzt');
     send(res, 200, '{"ok":true}');
   });
 }
