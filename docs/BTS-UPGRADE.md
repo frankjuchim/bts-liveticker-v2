@@ -136,7 +136,36 @@ auf einem Court liegt, zeigt `http://<Liveticker>/admin` bei **BTS-Erweiterung**
 „aktiv (v2)“: Beim nächsten Punkt erscheinen Punkt und Unterstreichung, die Vereine stehen
 bei den Spielern und im Liveticker gibt es den Bereich „Als Nächstes“.
 
-## Was passiert bei BTS-Updates?
+## BTS aktualisieren – mit einem Befehl
+
+`bts-patch/update-bts.sh` bringt BTS auf den neuesten Stand und spielt die Erweiterung danach
+wieder ein. Im BTS-Verzeichnis ausführen:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/bts-patch/update-bts.sh | bash
+```
+
+Auf einen anderen Branch oder ein anderes Repo wechseln (z. B. Tims BTSv2) – danach reicht
+für weitere Updates wieder der kurze Befehl oben:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/bts-patch/update-bts.sh | bash -s -- --repo https://github.com/tlehr/bts.git --branch feat/BTSv2
+```
+
+Was das Skript macht:
+
+1. bricht ab, wenn es im BTS-Verzeichnis nicht gespeicherte Änderungen gibt,
+2. sichert `data/` und `config.json` nach `../bts-backups/bts-<Datum>.tar.gz`,
+3. holt den neuesten Stand von GitHub; die alte Erweiterung wird dabei entfernt (keine
+   Konflikte bei `git pull`), andere eigene Commits bleiben erhalten,
+4. `npm install` (neue Pakete von BTS) und bup aktualisieren (falls als eigenes Repo eingebunden),
+5. spielt die Liveticker-Erweiterung neu ein – passt sie nicht, läuft BTS ohne sie weiter,
+6. startet BTS neu – **nur wenn sich etwas geändert hat**,
+7. zeigt am Ende den Befehl, mit dem es zurück zum vorherigen Stand geht.
+
+Schalter: `--no-backup`, `--no-extension`, `--no-restart`.
+
+## Was passiert bei BTS-Updates (von Hand)?
 
 Die Installation bleibt mit dem Original-Repo verbunden (`origin`). `git pull` – auch über
 `update-bts.sh` – holt wie gewohnt alle Updates und legt die Erweiterung als einen Commit

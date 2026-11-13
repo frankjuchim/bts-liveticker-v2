@@ -81,7 +81,9 @@ echo "==> git pull behält den Patch künftig obendrauf"
 git config pull.rebase true
 git config rebase.autoStash true
 
-if systemctl list-unit-files bts.service >/dev/null 2>&1 && systemctl cat bts.service >/dev/null 2>&1; then
+if [ -n "${NO_RESTART:-}" ]; then
+  echo "Erweiterung eingespielt (Neustart übernimmt update-bts.sh)."
+elif systemctl list-unit-files bts.service >/dev/null 2>&1 && systemctl cat bts.service >/dev/null 2>&1; then
   echo "==> BTS neu starten"
   if [ "$(id -u)" = 0 ]; then systemctl restart bts; else sudo systemctl restart bts; fi
   echo "Fertig. BTS verbindet sich neu mit dem Liveticker."

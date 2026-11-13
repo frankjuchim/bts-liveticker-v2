@@ -261,6 +261,12 @@ curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/
 
 Schritt für Schritt (wie man auf die BTS-Maschine kommt, wo das BTS-Verzeichnis liegt, was
 bei BTS-Updates passiert): **[docs/BTS-UPGRADE.md](docs/BTS-UPGRADE.md)**.
+
+**BTS aktualisieren** (neuester Stand + Erweiterung wieder einspielen, mit Sicherung):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/bts-patch/update-bts.sh | bash
+```
 `/admin` zeigt unter „BTS-Erweiterung“, ob sie aktiv ist („v2“ oder „ältere Version“ – dann
 den Befehl erneut ausführen, er aktualisiert).
 

@@ -160,6 +160,11 @@
     <p style="margin-bottom:0">Eingespielt wird sie <b>auf dem Rechner/Container, auf dem BTS läuft</b> (nicht hier im Liveticker) –
       dort im BTS-Verzeichnis ausführen und BTS danach neu starten (derselbe Befehl aktualisiert auch eine ältere Version):</p>
     <pre class="cmd">curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/bts-patch/apply.sh | bash</pre>
+    <p style="margin-bottom:0"><b>BTS selbst aktualisieren</b> (neuester Stand von GitHub, mit Sicherung von <code>data/</code>,
+      danach die Erweiterung wieder einspielen und BTS neu starten – nur wenn sich etwas geändert hat):</p>
+    <pre class="cmd">curl -fsSL https://raw.githubusercontent.com/frankjuchim/bts-liveticker-v2/main/bts-patch/update-bts.sh | bash</pre>
+    <p class="muted" style="margin:0;font-size:0.88rem">Auf einen anderen Branch wechseln, z. B. BTSv2:
+      <code>… | bash -s -- --repo https://github.com/tlehr/bts.git --branch feat/BTSv2</code></p>
     <p style="margin-bottom:0"><a href="https://github.com/frankjuchim/bts-liveticker-v2/blob/main/docs/BTS-UPGRADE.md" target="_blank" rel="noopener">Ausführliche Anleitung</a></p>
   </section>
 
