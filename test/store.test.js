@@ -435,3 +435,28 @@ test('Als Nächstes: angesetzte Spiele mit offener Seite aus den Feldern, mit Pl
   assert.deepStrictEqual(f.away, ['A']);
   assert.strictEqual(f.name, 'HE O19 Finale');
 });
+
+test('Ergebnisse löschen: auch Ergebnisse aus den Feldern bleiben weg, Court-Spiel bleibt', () => {
+  const s = store.emptyStore();
+  const dm = (id, extra) => Object.assign({
+    _id: id, di: 7, dn: 'HE', en: 'HE', sn: 'Hauptfeld', r: 'VF', mn: Number(id.slice(1)), pl: Number(id.slice(1)),
+    p0: ['A'], p1: ['B'], s: [[21, 10], [21, 5]], w: true, st: 'finished',
+  }, extra);
+  const ev = {
+    xv: 4, tournament_name: 'T', courts: [{ _id: 'c1', num: 1, match_id: 'm1' }],
+    matches: [{ _id: 'm1', n: 'HE VF', p0: ['A'], p1: ['B'], s: [[3, 2]] }],
+    upcoming: [], draws: [dm('m1', { s: null, w: null, st: 'oncourt' }), dm('m2'), dm('m3')],
+  };
+  store.applyTset(s, ev, '2026-11-14T10:00:00.000Z');
+  assert.deepStrictEqual(store.view(s).matches.map((m) => m.id).sort(), ['m1', 'm2', 'm3']);
+  store.resetResults(s);
+  store.applyTset(s, ev, '2026-11-14T10:01:00.000Z');   // BTS schickt die Felder erneut
+  assert.deepStrictEqual(store.view(s).matches.map((m) => m.id), ['m1']);
+  // neues Ergebnis nach dem Löschen erscheint wieder
+  ev.draws.push(dm('m4'));
+  store.applyTset(s, ev, '2026-11-14T10:02:00.000Z');
+  assert.deepStrictEqual(store.view(s).matches.map((m) => m.id).sort(), ['m1', 'm4']);
+  // überlebt Neustart
+  const r = store.restore(JSON.parse(JSON.stringify(s)));
+  assert.deepStrictEqual(store.view(r).matches.map((m) => m.id).sort(), ['m1', 'm4']);
+});

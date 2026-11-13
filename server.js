@@ -531,8 +531,7 @@ function handleBrand(req, res) {
 function handleReset(req, res) {
   if (!requireAdmin(req, res)) return;
   readBody(req, () => {
-    const onCourt = new Set(data.courts.map((c) => c.match).filter(Boolean));
-    for (const id of Object.keys(data.matches)) if (!onCourt.has(id)) delete data.matches[id];
+    store.resetResults(data);
     data.updatedAt = new Date().toISOString();
     changedFull();
     console.log('Ergebnisliste zurückgesetzt');
